@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="../Acp.Portal.Domain/Acp.Portal.Domain.csproj" />
+    <ProjectReference Include="../Acp.Portal.Infrastructure/Acp.Portal.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+  </ItemGroup>
+
+  <!-- The test project drives the app through WebApplicationFactory. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Acp.Portal.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -70,6 +70,40 @@ Open the wireframe — it is the best single explanation of the product:
 open docs/source/wireframe.html
 ```
 
+## Running it locally
+
+Currently at **Phase 1** — the skeleton. The API answers, the database migrates, the frontend
+reaches the API through a proxy. No sign-in, no Power BI, no grants yet; those are Phases 2–4.
+
+```bash
+scripts/dev-up.sh                 # colima + SQL Server + Azurite, waits until SQL is ready
+dotnet ef database update -p src/Acp.Portal.Infrastructure -s src/Acp.Portal.Api
+dotnet run --project src/Acp.Portal.Api     # http://localhost:5280
+npm --prefix web run dev                    # http://localhost:5173
+```
+
+Then open <http://localhost:5173>. It should report `Healthy` for both the API and the database.
+
+```bash
+dotnet build && dotnet test       # 19 tests, no containers needed
+scripts/dev-down.sh               # --clean also drops the data volumes
+```
+
+### Two things about this machine
+
+The .NET SDK was installed to `~/.dotnet` rather than system-wide, so tools need to find it.
+Add this to your shell profile:
+
+```bash
+export DOTNET_ROOT="$HOME/.dotnet"
+export PATH="$DOTNET_ROOT:$DOTNET_ROOT/tools:$PATH"
+```
+
+Containers run on **colima**, not Docker Desktop. `scripts/dev-up.sh` starts it with Rosetta,
+which SQL Server needs because there is no ARM build of it. The script also works around a
+stale `"credsStore": "desktop"` left in `~/.docker/config.json` by a previous Docker Desktop
+install — deleting that one line makes the workaround unnecessary.
+
 ## Hard constraints
 
 - No real client data and no real Databook outside ACP's tenant.

@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    No package references, by design. The domain is the one place that must stay readable
+    without knowing anything about EF Core, Azure or Power BI.
+  -->
+
+</Project>

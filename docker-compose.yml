@@ -1,0 +1,50 @@
+# Local development only. Nothing here is reachable off this machine, and the password below
+# is a fixed local-dev credential by design — real secrets live in Key Vault, and from Phase 4
+# the deployed app uses a managed identity and has no password at all.
+#
+# Apple Silicon note: there is no ARM build of SQL Server, so it runs under Rosetta. Start
+# colima with `--vm-type=vz --vz-rosetta` (scripts/dev-up.sh does this for you).
+
+services:
+  sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    container_name: acp-portal-sql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Acp_Local_Dev_2026!"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqldata:/var/opt/mssql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -Q "SELECT 1" -b
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+  # Blob for .pbix staging, Queue for the import jobs. Phase 5 uses both; Phase 1 just proves
+  # they are here, so the storage wiring is not a surprise later.
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: acp-portal-azurite
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data
+    ports:
+      - "10000:10000" # blob
+      - "10001:10001" # queue
+      - "10002:10002" # table
+    volumes:
+      - azuritedata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 10000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  sqldata:
+  azuritedata:

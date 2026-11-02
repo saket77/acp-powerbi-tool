@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Acp.Portal.Domain/Acp.Portal.Domain.csproj" />
+    <Project Path="src/Acp.Portal.Infrastructure/Acp.Portal.Infrastructure.csproj" />
+    <Project Path="src/Acp.Portal.Api/Acp.Portal.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="src/Acp.Portal.Tests/Acp.Portal.Tests.csproj" />
+  </Folder>
+</Solution>

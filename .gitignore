@@ -10,3 +10,6 @@ local.settings.json
 dist/
 build/
 .DS_Store
+
+# Local-only docker config, see scripts/dev-up.sh
+.localdev/
