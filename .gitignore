@@ -1,0 +1,12 @@
+node_modules/
+bin/
+obj/
+.vs/
+*.user
+local.settings.json
+.env
+.env.*
+!.env.example
+dist/
+build/
+.DS_Store
