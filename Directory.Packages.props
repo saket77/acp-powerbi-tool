@@ -12,12 +12,25 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.0" />
   </ItemGroup>
 
+  <ItemGroup Label="Identity">
+    <!--
+      Microsoft.Identity.Web does the OpenID Connect dance and nothing else; the session that
+      comes out of it is an ordinary ASP.NET Core cookie. Azure.Identity is here for the one
+      Graph call that invites a guest, and is what Blob, Queue and Key Vault will use from
+      Phase 4 — the same credential object, acquired once.
+    -->
+    <PackageVersion Include="Microsoft.Identity.Web" Version="4.16.1" />
+    <PackageVersion Include="Azure.Identity" Version="1.21.0" />
+  </ItemGroup>
+
   <ItemGroup Label="Hosting">
     <!--
       Microsoft.Extensions.Diagnostics.HealthChecks itself ships with the web framework and must
       not be referenced (NU1510). Only the EF Core integration is a real package.
     -->
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.0" />
   </ItemGroup>
 
   <!--

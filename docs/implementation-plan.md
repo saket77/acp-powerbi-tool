@@ -106,6 +106,27 @@ What we will lean on:
 | Azure Communication Services email | Log the email, show the invite link in the UI | Email provisioning is a side quest; the demo is in one room | Low |
 | User-assigned managed identity | App registration + secret **locally**, managed identity **when deployed** | A managed identity cannot authenticate from your laptop | Medium — the profile-ownership rule below |
 | KPI snapshot in the pipeline | Compute on read for the MVP | Not on the security path | Low |
+| MSAL in the browser | OpenID Connect on the **server**, opaque cookie in the browser | See below | Low — it is one file |
+| — | A second sign-in source for local work | See below | Low — delete two endpoints |
+
+**Why the sign-in moved to the server** (added in Phase 2). The plan said MSAL in the browser
+*and* an HttpOnly cookie, and the wireframe's rule that no token is visible in the browser. All
+three cannot be true at once: MSAL's whole job is to hold tokens in the browser. The portal
+calls Graph and Power BI as itself and never as the person, so a token for the signed-in user
+would be a credential with no purpose — and the safest place for one of those is nowhere. So
+`Microsoft.Identity.Web` does the OpenID Connect exchange server-side, the principal is replaced
+with the portal's own five claims before anything is written, and the browser receives an opaque
+cookie. MSAL is still involved — it is what `Microsoft.Identity.Web` uses underneath — just not
+in the browser. The visible consequence is that the app registration is a **Web** platform with
+a client secret rather than a single-page application.
+
+**Why there is a development sign-in** (added in Phase 2). Phases 1–3 need no Azure, so needing
+a Microsoft tenant only to see a screen would have blocked three phases on an afternoon of
+clicking. The portal therefore has a second claims source: a roster in configuration and a
+picker. It is not a bypass — the same resolver, classification, session cookie and security
+stamp run either way, which is exactly what makes it worth having, because the development loop
+exercises the production code path instead of avoiding it. It refuses to start outside the
+Development environment, and its endpoints are not mapped in any other mode.
 
 > **The one that bites if you get it wrong.** Service principal profiles belong permanently to
 > the identity that created them. If you create profiles locally with an app registration and
@@ -296,17 +317,28 @@ dev server proxying the API, `dotnet test` green, Bicep that deploys nothing yet
 
 **Done when:** `docker compose up && dotnet run` serves a page, and `dotnet test` passes.
 
-### Phase 2 — Identity · *me + you for the invites*
+### Phase 2 — Identity · *me + you for the invites* — **built**
 
-`Microsoft.Identity.Web` on the API, MSAL in the browser, HttpOnly `SameSite=Strict` session
-cookie, `IIdentityResolver` mapping the token to a `Users` row. Graph call to invite a guest.
-`/api/me` returns who you are and what kind.
+`Microsoft.Identity.Web` on the API doing the OpenID Connect exchange server-side (see §1.4),
+HttpOnly `SameSite=Strict` session cookie, `IIdentityResolver` mapping the token to a `Users`
+row. Graph call to invite a guest. `/api/me` returns who you are and what kind.
+
+Plus two things the plan did not name and the work needed:
+
+- **A development sign-in**, so phases 1–3 need no tenant at all (§1.4).
+- **`Users.SecurityStamp`**, checked on every request. This is where the wireframe's rule that a
+  change to someone's access ends their session *on the next request* actually lives. Phase 3
+  bumps it; Phase 2 issues and checks it.
 
 You invite your two throwaway accounts (D4) through the UI.
 
 **Done when:** you sign in as yourself and see `Kind: AcpStaff`; both client accounts sign in
 with *their own* Microsoft accounts and see `Kind: ClientUser`; no token is visible in the
 browser.
+
+*Status: done against the development sign-in, which exercises the same code path. The last
+sentence of the definition — your real account, two real Microsoft accounts — needs D1–D4 and
+`scripts/tenant-setup.md`. Nothing in the code is waiting on it.*
 
 ### Phase 3 — Grants and SQL RLS · *me*
 

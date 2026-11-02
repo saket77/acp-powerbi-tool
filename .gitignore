@@ -13,3 +13,9 @@ build/
 
 # Local-only docker config, see scripts/dev-up.sh
 .localdev/
+
+# Filled in from scripts/tenant-setup.md. Holds a client secret.
+config/entra.local.json
+
+# TypeScript incremental build state
+*.tsbuildinfo

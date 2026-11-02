@@ -65,6 +65,7 @@ public sealed class PortalDbContext(DbContextOptions<PortalDbContext> options) :
             e.Property(x => x.Email).HasMaxLength(320).IsRequired();
             e.Property(x => x.DisplayName).HasMaxLength(200).IsRequired();
             e.Property(x => x.Kind).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.SecurityStamp).HasMaxLength(64).IsRequired();
 
             // The stable identity from the IdP. One row per person, whatever they are called today.
             e.HasIndex(x => x.EntraObjectId).IsUnique();

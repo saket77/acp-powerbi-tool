@@ -340,6 +340,11 @@ namespace Acp.Portal.Infrastructure.Data.Migrations
                     b.Property<DateTimeOffset?>("LastSeenAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<string>("SecurityStamp")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("EntraObjectId")

@@ -2,6 +2,7 @@ using Acp.Portal.Infrastructure.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Acp.Portal.Tests;
@@ -15,7 +16,10 @@ namespace Acp.Portal.Tests;
 /// feature and proving it on a fake would prove nothing. Those will get their own fixture
 /// against the container; this factory stays for the tests that only exercise plumbing.
 /// </remarks>
-internal sealed class PortalAppFactory : WebApplicationFactory<Program>
+internal sealed class PortalAppFactory(
+    IDictionary<string, string?>? settings = null,
+    Action<IServiceCollection>? configureServices = null)
+    : WebApplicationFactory<Program>
 {
     private readonly string _databaseName = $"tests-{Guid.NewGuid()}";
 
@@ -25,6 +29,19 @@ internal sealed class PortalAppFactory : WebApplicationFactory<Program>
 
         // AddPortalInfrastructure refuses to start without one; the value is never dialled.
         builder.UseSetting("ConnectionStrings:Portal", "Server=unused;Database=unused;");
+
+        // Added last so it beats appsettings.Development.json *and* any config/entra.local.json
+        // the developer running the tests happens to have filled in. A test must not change
+        // behaviour because of a file that is not in the repository.
+        var overrides = settings ?? DevelopmentDefaults();
+
+        foreach (var (key, value) in overrides)
+        {
+            builder.UseSetting(key, value);
+        }
+
+        builder.ConfigureAppConfiguration(configuration =>
+            configuration.AddInMemoryCollection(overrides));
 
         builder.ConfigureServices(services =>
         {
@@ -44,6 +61,52 @@ internal sealed class PortalAppFactory : WebApplicationFactory<Program>
 
             services.AddDbContext<PortalDbContext>(options =>
                 options.UseInMemoryDatabase(_databaseName));
+
+            configureServices?.Invoke(services);
         });
     }
+
+    /// <summary>Runs something against the application's own database, as the application sees it.</summary>
+    public async Task WithDatabaseAsync(Func<PortalDbContext, Task> work)
+    {
+        using var scope = Services.CreateScope();
+        await work(scope.ServiceProvider.GetRequiredService<PortalDbContext>());
+    }
+
+    /// <summary>
+    /// A fixed roster, so that renaming an account in appsettings.Development.json breaks the
+    /// development loop rather than the test suite.
+    /// </summary>
+    private static Dictionary<string, string?> DevelopmentDefaults() => new()
+    {
+        ["Auth:Mode"] = "Development",
+        ["Auth:HomeTenantId"] = HomeTenant,
+        ["Auth:StaffEmailDomains:0"] = "acp.test",
+        ["Auth:InviteRedirectUrl"] = "http://localhost/",
+
+        ["Auth:Development:Accounts:0:Key"] = StaffKey,
+        ["Auth:Development:Accounts:0:ObjectId"] = "oid-staff",
+        ["Auth:Development:Accounts:0:Email"] = "staff@acp.test",
+        ["Auth:Development:Accounts:0:DisplayName"] = "A Consultant",
+        ["Auth:Development:Accounts:0:Guest"] = "false",
+
+        ["Auth:Development:Accounts:1:Key"] = ClientKey,
+        ["Auth:Development:Accounts:1:ObjectId"] = "oid-client",
+        ["Auth:Development:Accounts:1:Email"] = "anna@client.test",
+        ["Auth:Development:Accounts:1:DisplayName"] = "Anna Keller",
+        ["Auth:Development:Accounts:1:Guest"] = "true",
+
+        // Right email domain, wrong directory. Must come out as a client user.
+        ["Auth:Development:Accounts:2:Key"] = OutsiderKey,
+        ["Auth:Development:Accounts:2:ObjectId"] = "oid-outsider",
+        ["Auth:Development:Accounts:2:Email"] = "impostor@acp.test",
+        ["Auth:Development:Accounts:2:DisplayName"] = "Another Directory",
+        ["Auth:Development:Accounts:2:Guest"] = "false",
+        ["Auth:Development:Accounts:2:TenantId"] = "99999999-9999-9999-9999-999999999999",
+    };
+
+    public const string HomeTenant = "11111111-1111-1111-1111-111111111111";
+    public const string StaffKey = "staff";
+    public const string ClientKey = "client";
+    public const string OutsiderKey = "outsider";
 }

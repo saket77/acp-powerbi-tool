@@ -50,6 +50,9 @@ attacks alone; together they cover a bug in any one of them.
 | Automation | **13 of 22** lifecycle steps run by themselves |
 | Steps for the platform owner per project | **0** — support only |
 
+**Status of the code:** Phases 1–2 built. See [Running it locally](#running-it-locally) — it
+runs today with no Azure account and no Microsoft tenant.
+
 ## Docs
 
 | File | What it holds |
@@ -72,8 +75,9 @@ open docs/source/wireframe.html
 
 ## Running it locally
 
-Currently at **Phase 1** — the skeleton. The API answers, the database migrates, the frontend
-reaches the API through a proxy. No sign-in, no Power BI, no grants yet; those are Phases 2–4.
+Currently at **Phase 2** — identity. People sign in, the portal decides whether they are ACP
+staff or a client, and consultants can invite client contacts. No Power BI and no grants yet;
+those are Phases 3–4.
 
 ```bash
 scripts/dev-up.sh                 # colima + SQL Server + Azurite, waits until SQL is ready
@@ -82,12 +86,50 @@ dotnet run --project src/Acp.Portal.Api     # http://localhost:5280
 npm --prefix web run dev                    # http://localhost:5173
 ```
 
-Then open <http://localhost:5173>. It should report `Healthy` for both the API and the database.
+Then open <http://localhost:5173> and pick somebody from the account picker.
 
 ```bash
-dotnet build && dotnet test       # 19 tests, no containers needed
+dotnet build && dotnet test       # 53 tests, no containers needed
 scripts/dev-down.sh               # --clean also drops the data volumes
 ```
+
+### Signing in without a tenant
+
+**Nothing in Phases 1–3 needs Azure, a tenant or a Microsoft account.** The portal ships with a
+second way to sign in: a roster of fictional people in `appsettings.Development.json` and a
+picker that signs you in as any of them.
+
+It is not a bypass. The same `IIdentityResolver` runs, the same classification decides staff
+from client, the same session cookie comes out — only the source of the claims differs. That
+means inviting a client contact works too: the invitee turns up in the picker instead of getting
+an email, so the whole invite → sign in → *client* loop is testable today.
+
+The development sign-in **refuses to start outside the Development environment**, and its
+endpoints are not mapped at all in any other mode — they are not routes that return 403, they
+are routes that do not exist.
+
+### Switching to real Microsoft sign-in
+
+Work through [scripts/tenant-setup.md](scripts/tenant-setup.md), then:
+
+```bash
+cp config/entra.local.example.json config/entra.local.json   # fill in four values
+```
+
+That file is git-ignored and read only in development. Setting `Auth.Mode` to `Entra` in it is
+the switch. A deployed environment has no such file: it gets these values from app settings and
+authenticates to Graph as its managed identity.
+
+### How the session works
+
+Sign-in happens on the server, not in the browser. What reaches the browser is an opaque
+`HttpOnly`, `SameSite=Strict` cookie carrying five values — user id, kind, security stamp,
+object id, name — and no token of any kind, because the portal calls Graph and Power BI as
+itself rather than as the person. The front end cannot read it and has nothing to leak.
+
+Every request re-checks the session's security stamp against the database, so a change to
+someone's access ends their session on their next request rather than whenever the cookie
+expires. Phase 3 is what bumps the stamp.
 
 ### Two things about this machine
 

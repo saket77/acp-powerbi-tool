@@ -1,0 +1,38 @@
+// Copy this file to config/entra.local.json and fill in the four values from
+// scripts/tenant-setup.md. That file is git-ignored; this one is the template.
+//
+// Until you have a tenant, you do not need any of it: appsettings.Development.json runs the
+// portal on the development sign-in, which needs nothing at all. Fill this in when you want
+// real Microsoft sign-in, and set Auth.Mode to "Entra" below at the same time.
+{
+  "Auth": {
+    // "Development" = the account picker, no network. "Entra" = real Microsoft sign-in.
+    "Mode": "Entra",
+
+    // Email domains whose members are ACP staff. Everyone else is a client user, including
+    // anyone in the directory whose domain is not listed here. Leave empty only in a tenant
+    // that exists solely for ACP.
+    "StaffEmailDomains": [ "yourdomain.onmicrosoft.com" ],
+
+    // Tenant id from tenant-setup.md step 1. A token from any other directory is a client
+    // user whatever its email says.
+    "HomeTenantId": "00000000-0000-0000-0000-000000000000",
+
+    // Where an invited guest lands after accepting. Must be an origin you own.
+    "InviteRedirectUrl": "http://localhost:5173/"
+  },
+
+  "Entra": {
+    // Tenant id again — Microsoft.Identity.Web reads it from here.
+    "TenantId": "00000000-0000-0000-0000-000000000000",
+
+    // Application (client) id from tenant-setup.md step 4.
+    "ClientId": "00000000-0000-0000-0000-000000000000",
+
+    // The client secret. Local development only; in Azure the portal has a managed identity
+    // and no secret at all. If you would rather not have it on disk, leave it out and run:
+    //   cd src/Acp.Portal.Api
+    //   dotnet user-secrets set "Entra:ClientSecret" "..."
+    "ClientSecret": ""
+  }
+}

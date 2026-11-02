@@ -23,6 +23,17 @@ public sealed class User
 
     public UserKind Kind { get; set; }
 
+    /// <summary>
+    /// Changes whenever this person's access changes. The session cookie carries the value it
+    /// was issued with, so bumping this signs the person out on their very next request —
+    /// which is the wireframe's rule that a revoked grant takes effect immediately rather than
+    /// whenever the cookie happens to expire.
+    /// </summary>
+    /// <remarks>
+    /// Phase 2 only issues and checks it. Phase 3 is what bumps it, from the grant endpoints.
+    /// </remarks>
+    public string SecurityStamp { get; set; } = Guid.NewGuid().ToString("N");
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset? LastSeenAt { get; set; }
