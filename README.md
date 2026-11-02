@@ -54,7 +54,8 @@ attacks alone; together they cover a bug in any one of them.
 
 | File | What it holds |
 | --- | --- |
-| [docs/wireframe.md](docs/wireframe.md) | **Source of truth — build against this.** The interactive concept: 22-step lifecycle, five walls, API surface, phases, costs |
+| [docs/implementation-plan.md](docs/implementation-plan.md) | **The MVP plan.** Decisions, what you need to buy, phases with definitions of done |
+| [docs/wireframe.md](docs/wireframe.md) | **Source of truth — the plan is built against this.** 22-step lifecycle, five walls, API surface, costs |
 | [docs/decisions-and-deltas.md](docs/decisions-and-deltas.md) | **Read second.** Three artifacts disagree; this is which one wins on each point |
 | [docs/architecture.md](docs/architecture.md) | 29 Oct architecture proposal — superseded in detail, sound in structure |
 | [docs/product-brief.md](docs/product-brief.md) | 26 Oct origin brief: problem, users, the template contract |
