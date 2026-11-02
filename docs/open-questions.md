@@ -1,110 +1,91 @@
 # Open questions
 
-Three kinds: what the documents say must be **proven**, what must be **decided by people**, and
-technical risks **I flagged while reading** that neither document addresses. The last group is
-my analysis, not sourced from ACP material — treat it as a review note.
+Revised after reading the wireframe, which answers several of these. Three groups: **still
+open**, **answered** (kept so the reasoning is not re-litigated), and **decisions owed by
+people**.
 
 ---
 
-## A. Must be proven before build (from the documents)
+## A. Still open — must be proven before or during build
 
-Gate 1 in the architecture proposal, and the four spikes in the product brief, are the same work
-seen twice. Combined:
+### A1. Memory per model on F2 for the largest Databook
+The wireframe names this as untested, and it is the one that can invalidate the cost story.
+EUR 350–450/month rests on F2 holding the heaviest Databook — Cash Flow with all levels
+expanded. Fallback F4 (the Maintenance view says F2 → F4 "in minutes"), but that changes the
+number the partners are being shown. **Test before Gate 2, not after.**
 
-### A1. RLS through the viewing pass
-Pass two or three company names in the effective identity and confirm the `Client` role filters
-correctly — including names with spaces, umlauts, and long lists. **This is the single highest
-risk in the design** (see C1).
+### A2. Files over 1 GB
+Also named as untested. Power BI's Import API has a separate temporary-upload-location path for
+large files, and which one applies changes the Function's import code. Measuring the real
+Databook file sizes is an hour's work and de-risks phase 5.
 
-### A2. Upload by the service principal
-Import a `.pbix` of realistic size into a new workspace as the client-scoped profile, then read
-back the roles and the `Template Version` measure to run the checks.
+### A3. The `username` length limit
+The design puts company **codes** joined by `|` into the embed token's `username` field. Codes
+rather than display names is the safer choice and already adopted. What remains unverified is
+the field's length limit against ACP's widest client — a group with many legal entities.
 
-### A3. Capacity fit
-Open the heaviest Databook page — Cash Flow with all levels expanded — and watch memory and
-throttling. The brief assumed F2; the architecture refuses to name a SKU before a representative
-load test. Fallback F4 or F8.
+`customData` / `CUSTOMDATA()` is the field Microsoft designed for carrying this kind of context
+and is worth testing alongside in phase 4, if only to know the fallback. *(My note, not from
+ACP material — the wireframe commits to `username`.)*
 
-### A4. Profiles at scale
-The brief asked "one robot or many". The architecture **decided**: a profile per client. What is
-left to prove is whether the profile model holds at ACP's client count, and what the per-tenant
-limits actually are.
+### A4. ACP staff viewing without Pro
+Listed in the wireframe's own decisions as a question for ACP's Microsoft partner. It affects
+whether consultants need a Pro licence each to use the portal they built, which is a real line
+item at ACP's headcount.
 
-### A5. XMLA/TOM validation feasibility
-Deep model inspection is *proposed*, not proven — and it interacts with A3, because XMLA
-endpoint behaviour depends on the capacity tier.
+### A5. Capacity metrics have no simple API
+The wireframe rates this its only "tricky" job. The workaround — alert on slow or failed loads,
+read the Capacity Metrics app weekly — is a degraded signal. Fine for MVP; name it as a known
+gap at handover rather than discovering it in production.
+
+### A6. CORS on the storage account
+The browser uploading straight to Blob with a SAS requires CORS configured on the storage
+account. Trivial, but it belongs in the Bicep, not clicked in the portal. *(My note.)*
+
+### A7. Entra External ID is a separate tenant to own
+Right call, but not a toggle: separate tenant, app registration, invitation flow, MFA policy,
+branding, Conditional Access. Confirm ACP IT will own a second tenant and budget real time for
+phase 2. *(My note.)*
 
 ---
 
-## B. Decisions needed from people (from the documents)
+## B. Answered — do not reopen
+
+| Question | Answer | Source |
+| --- | --- | --- |
+| One service principal or many? | **Profile per client.** Limits confirmed: 1,000 workspaces per profile, 100,000 profiles per SP | Wireframe, Power BI setup |
+| Why XMLA rather than a simpler query API? | **Execute Queries does not support service principals on RLS models.** XMLA is the only path, and it needs a capacity | Wireframe, Power BI setup |
+| Workspace per project or per client? | **Per client.** ~200 workspaces for 200 clients; projects add models, not workspaces | Wireframe + 29 Oct architecture |
+| How long does a revoked client keep access? | **At most 30 minutes** — token lifetime. Accepted and stated in the residual-risk list | Wireframe, Security |
+| Where do client identities live? | **Separate Entra External ID tenant**, invitation only, sign-up off, email code | Wireframe + 29 Oct architecture |
+| What stops cross-client access? | **Five independent walls** — grants, SQL RLS, profile, token scope, model RLS — with an attack table per wall | Wireframe, Security |
+| How are secrets managed? | **There are none.** User-assigned managed identity; Key Vault holds configuration. Resource lock on the identity because it owns the profiles | Wireframe, Maintenance |
+| Company names or codes in RLS? | **Codes** | Wireframe |
+| Where are screens 2–4 and the admin page? | **All present in the wireframe** — client sign-in, analytics home, report view, ACP portfolio, client and project pages, administration, health | Wireframe |
+
+---
+
+## C. Decisions owed by people
+
+From the wireframe's own "Decisions needed before phase 1", plus what the PDFs add.
 
 | From | Input / approval needed |
 | --- | --- |
-| **Sejal** | Sanitized `.pbix` template and fake-data file; real report/page inventory; company-code field and RLS roles; validation measures and template-version conventions |
-| **ACP management** | Approve MVP scope, data ownership, information barriers, second-person release, budget envelope |
-| **ACP IT** | Test/production tenant access; app identity and profile settings; workspace-creation API authorization; Azure subscription; EU region; sign-in configuration; deployment approval |
-| **Microsoft licensing / capacity owner** | Verify embedding trial behaviour, XMLA feature availability, F-SKU fit against the largest model. Choose production capacity only after a representative load test |
+| **Patrik** (sponsor) | Approve the architecture and **the rule for restricted projects**. Decision at each gate; notified on break-glass |
+| **Microsoft partner** | ACP staff viewing without Pro; current F2 price and reservation; embedding trial behaviour |
+| **Sejal** | List the existing reports, their workspace and capacity, and the tenant settings. Sanitized `.pbix` template and fake-data file; company-code field and RLS roles; template-version conventions |
+| **Data protection officer** | Activity data, client terms, retention |
+| **ACP IT** | Test/production tenant access; app identity and profile settings; workspace-creation API authorization; Azure subscription; EU region; deployment approval |
+| **ACP management** | MVP scope, data ownership, information barriers, second-person release, budget envelope |
 
 ---
 
-## C. Review notes — risks I would raise
+## D. Missing input that would sharpen the plan
 
-### C1. How company scope reaches RLS
-
-The design smuggles a pipe-delimited company list into the `username` field of the effective
-identity and reads it back with `PATHCONTAINS(USERPRINCIPALNAME(), ...)`. Both documents flag
-the length limit, but the deeper issue is that `username` is **not the field designed for this**.
-
-Power BI's effective identity has a `customData` field intended to carry arbitrary context,
-readable in DAX as `CUSTOMDATA()`. It is worth evaluating in spike A1 as the primary mechanism,
-with `username` as fallback:
-
-- It has its own length limit — **verify the actual limit against ACP's longest client**, a
-  group with many legal entities.
-- Check that `customData` behaves correctly **in combination with service-principal profiles**,
-  since that pairing is the part of the design that changed most recently.
-- A delimiter-based list breaks if a company name contains the delimiter. `|` is unlikely in a
-  legal entity name but is not impossible; a code list (the `Ges.` codes themselves rather than
-  display names) is safer than names.
-
-**Recommendation:** filter on stable `Ges.` codes, not display names, whichever field carries them.
-
-### C2. Token revocation is not immediate
-
-The architecture states it plainly: revoking access blocks *new* embed tokens, but already-issued
-tokens stay valid until expiry. With a 60-minute lifetime, a revoked client keeps access for up
-to an hour. Decide whether that is acceptable for financial data, or shorten the lifetime and
-refresh more often. This should be a written, approved position, not an accident.
-
-### C3. Capacity and workspace ceilings
-
-Worth confirming before committing to the per-client workspace model:
-- Maximum workspaces, semantic models and reports per capacity / per tenant.
-- Maximum service-principal profiles per service principal, and any throttling on profile
-  creation.
-- Whether F2 memory holds one Databook model, let alone several resident at once.
-
-200 projects a year accumulate. The model must answer "what does year three look like."
-
-### C4. Direct-to-Blob upload needs CORS
-
-The browser uploading straight to Blob Storage with a SAS requires CORS configured on the storage
-account. Easy, but it is infrastructure that must be in the Bicep, not clicked in the portal.
-
-### C5. Entra External ID is a separate product with its own setup
-
-Moving clients out of ACP's tenant into a dedicated External ID tenant is the right call, but it
-is not a config toggle — separate tenant, separate app registration, its own invitation flow,
-MFA policy and branding. Budget real time for it, and confirm ACP IT will own a second tenant.
-
-### C6. `.pbix` size drives the transfer method
-
-The architecture notes Microsoft has a separate temporary-upload-location API for large files.
-**Measure the real Databook file sizes before choosing**, because it changes the Function's
-import path. This is a one-hour task that de-risks step 3.
-
-### C7. The three missing screens
-
-Screens 2–4 (consultant project page, client sign-in, client report) and the admin page exist
-only in the original interactive doc. They are needed before UI work in Gate 3 — not before
-Gates 1 and 2, which are backend proofs.
+1. **The *Databook Portal: Architecture Review* (28 Oct)** — cited by both the architecture PDF
+   and the wireframe as the full reasoning. Not in this repo. It is where the justification for
+   the reversals lives, and the likeliest place to find anything the wireframe asserts without
+   showing its work.
+2. **The paused ACP requirements draft** — 24 functional requirements and the portal data model,
+   mentioned at the end of the 26 Oct brief. A data model that already exists is directly
+   reusable in phase 3.

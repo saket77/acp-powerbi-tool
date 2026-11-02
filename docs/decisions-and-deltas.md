@@ -1,7 +1,47 @@
-# What changed between the two documents
+# What changed, document by document
 
-Two source documents exist and **they do not agree**. The 29 Oct architecture proposal closes
-with an explicit supersession note:
+**Three** source artifacts exist and they do not agree. In order of authority, newest first:
+
+| # | Artifact | Date | Status |
+| --- | --- | --- | --- |
+| 1 | [`wireframe.html`](source/wireframe.html) — see [wireframe.md](wireframe.md) | latest | **Source of truth. Build against this** |
+| 2 | Architecture proposal PDF — see [architecture.md](architecture.md) | 29 Oct 2026 | Superseded in detail, sound in structure |
+| 3 | Product brief PDF — see [product-brief.md](product-brief.md) | 26 Oct 2026 | Origin document; keep for intent and the template contract |
+
+A fourth document is referenced but **not in our possession**: *Databook Portal: Architecture
+Review* (28 Oct), cited by both the architecture PDF ("source basis") and the wireframe ("full
+reasoning"). Worth retrieving — it is where the reasoning behind the reversals lives.
+
+---
+
+## Layer 3 → 1: what the wireframe changes again
+
+The wireframe is not just more detailed; it moves several decisions.
+
+| Topic | 29 Oct architecture | Wireframe | Why it matters |
+| --- | --- | --- | --- |
+| **Token lifetime** | 60 minutes | **30 minutes**, renewed 5 min before expiry | Halves the post-revocation exposure window. The wireframe treats this as an accepted, stated residual risk rather than an oversight |
+| **Credential model** | Service principal with a secret in Key Vault | **User-assigned managed identity — no secret exists anywhere.** Key Vault holds configuration only | Removes secret rotation entirely. Carries a new operational rule: a **resource lock on the identity**, because it owns the profiles |
+| **XMLA** | "proposed… feasibility must be proven" | **Decided, with the reason**: Execute Queries does not support service principals on RLS models, so checks must use XMLA | Turns an open question into a requirement. XMLA read must be on, and that needs a capacity |
+| **Gates** | 4 gates | **3 gates**, 11 phases (0–10), demo covers 0–7 | Different shape. Follow the wireframe's |
+| **Runtime** | "ASP.NET Core" | **.NET 10 (LTS)**, supported to Nov 2028 | Pin it |
+| **Email** | "Microsoft Graph or Azure Communication Services" | **Azure Communication Services** | Decided |
+| **SQL RLS** | not mentioned | **A named wall** — the database filters by session user independently of the app | A whole security layer the PDFs do not have |
+| **Templates workspace** | not mentioned | A `Templates` workspace of golden reports for later dynamic binding | New component |
+| **Company scope** | company *names* joined by `\|` | company **codes** joined by `\|` | Safer — a delimiter in a display name can no longer break the filter |
+| **Profile limits** | open question | **1,000 workspaces per profile; 100,000 profiles per service principal** | Confirmed. The per-client model scales |
+| **Capacity metrics** | not mentioned | Flagged as the **one "tricky" job** — no simple API; alert on slow/failed loads, Capacity Metrics app weekly | A known rough edge to plan around |
+
+What the wireframe keeps from the 29 Oct architecture: per-client workspace + profile, Entra
+External ID as a separate tenant, ASP.NET Core as the interactive API with Functions demoted to
+background work, direct-to-Blob upload with a short-lived write-only link, and two-person
+release.
+
+---
+
+## Layer 2 → the brief: the reversals the architecture named
+
+The 29 Oct architecture proposal closes with an explicit supersession note:
 
 > "The revised architecture review supersedes earlier suggestions of a single shared service
 > principal, B2B guest client identities in ACP's tenant, and Azure Functions serving the

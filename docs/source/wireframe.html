@@ -1,0 +1,1395 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Databook Portal</title>
+<style>
+:root{
+  --ink:#172033; --muted:#5b6477; --faint:#8b93a5; --line:#e3e6ec; --line2:#d3d8e0; --bg:#f3f4f7; --card:#ffffff; --soft:#f7f8fa;
+  --side:#0f2a40; --side-ink:#c3d1de; --navy:#12324d;
+  --accent:#1d5c8c; --accent-soft:#e8f0f7; --accent-ink:#154769;
+  --good:#287a49; --good-soft:#e5f3ea; --warn:#93570a; --warn-soft:#fcf0db; --bad:#ad2a20; --bad-soft:#fbe8e6;
+  --robot:#5a4ab4; --robot-soft:#efedfb; --pbi:#e8b100; --teal:#2a8f86;
+  --radius:10px; --mono:ui-monospace,"Cascadia Code",Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
+button{font:inherit;cursor:pointer;color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+/* shell */
+.shell{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100vh}
+.side{background:var(--side);color:var(--side-ink);padding:18px 12px;position:sticky;top:env(safe-area-inset-top,0px);height:100vh;overflow:auto}
+.side .brand{display:flex;gap:10px;align-items:center;color:#fff;font-weight:600;font-size:15px;padding:0 8px 10px}
+.side .brand small{display:block;font-weight:400;font-size:12px;color:#8fa6ba}
+.logo{width:30px;height:30px;border-radius:8px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700;letter-spacing:.04em;flex:none}
+.side .grp{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7891a7;padding:16px 10px 6px}
+.side nav button{display:block;width:100%;border:0;background:none;color:var(--side-ink);padding:8px 10px;border-radius:8px;text-align:left}
+.side nav button:hover{background:rgba(255,255,255,.07);color:#fff}
+.side nav button.on{background:rgba(255,255,255,.13);color:#fff;font-weight:600;box-shadow:inset 3px 0 0 var(--pbi)}
+.main{min-width:0;display:flex;flex-direction:column}
+.top{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:14px 24px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:env(safe-area-inset-top,0px);z-index:6}
+.top h1{font-size:19px;margin:0;font-weight:650}
+.spacer{flex:1}
+.chk{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13px;margin:0}
+.content{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:20px;padding:20px 24px 40px;max-width:1480px;width:100%}
+.content.nonotes{grid-template-columns:minmax(0,1fr)}
+.content.nonotes #notes{display:none}
+@media (max-width:1150px){.content{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:900px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .side{position:static;height:auto;padding:10px 12px}
+  .side .grp{display:none}
+  .side nav{display:flex;flex-wrap:wrap;gap:4px}
+  .side nav button{width:auto;padding:6px 10px}
+  .top{position:static;padding:12px 16px}
+  .content{padding:16px}
+}
+/* tour */
+.tour{background:#14324a;color:#fff;padding:10px 24px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.tour .n{font-size:12px;color:#b9cbd9;white-space:nowrap}
+.tour .tt{font-weight:600}
+.tour .tx{font-size:13px;color:#dfe8ef;flex:1 1 320px}
+.tour .btn{background:transparent;color:#fff;border-color:rgba(255,255,255,.45)}
+.tour .btn:hover{border-color:#fff}
+.tour .btn.primary{background:#fff;color:#14324a;border-color:#fff}
+.dots{display:flex;gap:4px;flex-wrap:wrap}
+.dots button{width:8px;height:8px;border-radius:50%;border:0;padding:0;background:rgba(255,255,255,.3)}
+.dots button.on{background:var(--pbi)}
+/* basics */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px}
+.stack{display:flex;flex-direction:column;gap:16px}
+h2{font-size:15px;margin:0 0 10px;font-weight:650}
+h3{font-size:13.5px;margin:14px 0 6px;font-weight:600;color:var(--muted)}
+.h{font-size:18px;margin:0;font-weight:650}
+.sub{color:var(--muted);font-size:13px}
+.lead{font-size:15px;color:var(--muted);max-width:74ch;margin:6px 0 0}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.between{justify-content:space-between}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.btn{border:1px solid var(--line2);background:var(--card);color:var(--ink);padding:7px 14px;border-radius:8px;white-space:nowrap}
+.btn:hover{border-color:#b9c0cb}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent-ink)}
+.btn.ghost{border-color:transparent;color:var(--accent);padding-left:6px;padding-right:6px}
+.btn.small{padding:3px 10px;font-size:12.5px}
+.btn.danger{color:var(--bad)}
+.btn[disabled]{opacity:.5;cursor:default}
+.link{background:none;border:0;color:var(--accent);padding:0}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-weight:500;color:var(--muted);font-size:12.5px;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr.click{cursor:pointer}
+tr.click:hover td{background:#fafbfc}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.tbl-wrap{overflow-x:auto}
+.tot td{font-weight:600}
+.badge{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:20px;white-space:nowrap;vertical-align:1px}
+.b-live,.b-easy,.b-ok{background:var(--good-soft);color:var(--good)}
+.b-draft,.b-info{background:var(--accent-soft);color:var(--accent-ink)}
+.b-ended,.b-role{background:#eef0f3;color:var(--muted)}
+.b-warn,.b-medium{background:var(--warn-soft);color:var(--warn)}
+.b-bad,.b-tricky{background:var(--bad-soft);color:var(--bad)}
+.b-lead{background:#14324a;color:#fff}
+.b-restricted{background:#2b2140;color:#fff}
+.avatar{width:30px;height:30px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);display:grid;place-items:center;font-size:11.5px;font-weight:600;flex:none}
+.avatar.c{background:#fff3d6;color:#7a5400}
+.avatar.sm{width:24px;height:24px;font-size:10.5px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{background:var(--soft);border-radius:8px;padding:12px 14px}
+.kpi .l{font-size:12.5px;color:var(--muted)}
+.kpi .v{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.3}
+.kpi .h{font-size:12px;color:var(--faint)}
+.msg{margin-top:10px;padding:10px 12px;border-radius:8px;font-size:13.5px}
+.msg.bad{background:var(--bad-soft);color:var(--bad)}
+.msg.good{background:var(--good-soft);color:var(--good)}
+.msg.info{background:var(--accent-soft);color:var(--accent-ink)}
+.msg.warn{background:var(--warn-soft);color:var(--warn)}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;align-items:center}
+.empty{color:var(--faint);font-size:13px}
+.empty-state{text-align:center;padding:40px 16px;color:var(--muted)}
+.empty-state .big{font-size:17px;color:var(--ink);font-weight:600;margin-bottom:4px}
+.foot{font-size:12px;color:var(--faint);margin:14px 0 0}
+label{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px}
+input[type=text],input[type=email],input[type=password],input[type=date],select{width:100%;padding:8px 10px;border:1px solid #cfd4dc;border-radius:7px;font:inherit;background:#fff;color:var(--ink)}
+select.mini{width:auto;padding:4px 8px;font-size:13px}
+.err{color:var(--bad);font-size:12.5px;margin-top:8px;min-height:1em}
+.cbx{display:flex;gap:8px;align-items:center;margin:4px 0;color:var(--ink);font-size:13.5px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:var(--card);padding:6px 14px;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line2)}
+.seg button.on{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.seg.wide{display:flex;margin:12px 0 4px}
+.seg.wide button{flex:1}
+code{font-family:var(--mono);font-size:11.5px;background:#fff;padding:0 4px;border-radius:4px;overflow-wrap:anywhere;border:1px solid var(--line)}
+/* portal app frame */
+.app{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:visible}
+.app-bar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);background:#fbfcfd;border-radius:12px 12px 0 0;position:relative}
+.app-bar .name{font-weight:650}
+.app-bar .logo{width:26px;height:26px;font-size:10px;border-radius:7px}
+.app-bar .ctx{color:var(--faint);font-size:13px}
+.app-tabs{display:flex;gap:2px;margin-left:8px}
+.app-tabs button{border:0;background:none;padding:6px 12px;border-radius:7px;color:var(--muted)}
+.app-tabs button.on{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.app-body{padding:18px}
+.crumbs{margin-bottom:10px;font-size:13px;color:var(--faint)}
+.crumbs button{background:none;border:0;padding:0;color:var(--accent)}
+.ctxbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#14324a;color:#fff;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:13px}
+.ctxbar b{font-weight:600}
+.ctxbar .sep{opacity:.5}
+/* client header */
+.cl-bar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line);background:#fff;border-radius:12px 12px 0 0;position:relative}
+.switch{position:relative}
+.switch > button{display:flex;gap:8px;align-items:center;border:1px solid var(--line2);background:#fff;border-radius:20px;padding:5px 12px 5px 14px;font-weight:600}
+.switch > button .chev{font-size:10px;color:var(--faint)}
+.dropdown{position:absolute;top:calc(100% + 6px);left:0;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(20,30,50,.14);min-width:300px;z-index:15;padding:6px}
+.dropdown.right{left:auto;right:0;min-width:200px}
+.dropdown button{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:7px}
+.dropdown button:hover{background:var(--soft)}
+.dropdown button.on{background:var(--accent-soft)}
+.dropdown .t{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);padding:6px 10px 4px}
+.welcome{background:var(--navy);color:#fff;border-radius:12px;padding:22px 24px;display:flex;flex-wrap:wrap;gap:18px;justify-content:space-between;align-items:flex-end}
+.welcome .hi{color:#a9c2d6;font-size:14px}
+.welcome .pn{font-size:24px;font-weight:650;margin:2px 0 10px;letter-spacing:-.01em}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:rgba(255,255,255,.12);border-radius:20px;padding:3px 11px;font-size:12.5px;color:#e4edf4}
+.contact{background:rgba(255,255,255,.08);border-radius:10px;padding:10px 14px;font-size:13px;min-width:220px}
+.contact b{display:block;color:#fff}
+.contact span{color:#c2d4e2}
+.kcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kcard{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.kcard .l{font-size:12.5px;color:var(--muted)}
+.kcard .v{font-size:24px;font-weight:650;font-variant-numeric:tabular-nums;line-height:1.25;margin-top:2px}
+.kcard .u{font-size:12px;color:var(--faint)}
+.kcard .d{font-size:12px;margin-top:6px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.up{color:var(--good)} .down{color:var(--bad)}
+.rcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.rcard{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.rcard .th{background:#f4f7fa;border-bottom:1px solid var(--line);display:block}
+.rcard .th svg{display:block;width:100%;height:auto}
+.rcard .bd{padding:12px 14px;display:flex;flex-direction:column;gap:4px;flex:1}
+.rcard .bd b{font-size:14px}
+.rcard .bd .meta{font-size:12px;color:var(--faint);margin-top:auto;padding-top:8px}
+.rcard .new{position:relative}
+.section-h{display:flex;justify-content:space-between;align-items:baseline;margin:22px 0 10px}
+.section-h h2{margin:0}
+/* concept strip */
+.concept{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;background:#fff8e6;border:1px dashed #e7c46a;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:12.5px;color:#6b4e00}
+.concept .seg button{padding:3px 10px;font-size:12.5px}
+/* project page */
+.people{list-style:none;margin:0 0 10px;padding:0}
+.people li{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.people .who{flex:1;min-width:0}
+.people .who .m{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.drop{border:1.5px dashed #9fb8cc;border-radius:10px;padding:18px;text-align:center;background:#fafcfe;transition:background .15s}
+.drop.over{background:var(--accent-soft)}
+.checks{list-style:none;padding:0;margin:12px 0 0}
+.checks li{display:flex;gap:8px;align-items:flex-start;padding:4px 0;font-size:13.5px}
+.ic{width:18px;height:18px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:11px;font-weight:700;margin-top:1px}
+.ic.ok{background:var(--good-soft);color:var(--good)}
+.ic.no{background:var(--bad-soft);color:var(--bad)}
+.ic.wait{border:2px solid var(--line);border-top-color:var(--accent);animation:spin .8s linear infinite}
+.ic.todo{border:2px solid var(--line)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.ic.wait{animation:none}}
+.versions{font-size:13px;color:var(--muted);margin-top:8px}
+.picks{display:flex;flex-direction:column;gap:2px;margin-top:6px;max-height:190px;overflow:auto}
+.pick{display:flex;gap:10px;align-items:center;border:1px solid transparent;background:none;border-radius:8px;padding:6px 8px;text-align:left}
+.pick:hover{background:var(--soft)}
+.pick.on{border-color:var(--accent);background:var(--accent-soft)}
+.selbox{border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:10px;background:var(--soft)}
+.rights{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.right{font-size:12px;padding:2px 9px;border-radius:20px}
+.right.yes{background:var(--good-soft);color:var(--good)}
+.right.no{background:#eef0f3;color:var(--faint)}
+.fresh{font-size:11.5px;padding:1px 8px;border-radius:20px}
+/* report frame */
+.rv-head{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:flex-end;margin-bottom:12px}
+.fbar{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--soft);margin-bottom:10px}
+.slicer{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;color:var(--muted)}
+.pill{border:1px solid var(--line2);background:#fff;border-radius:16px;padding:2px 11px;font-size:12.5px;color:var(--ink)}
+.pill.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.lock{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;background:#eef0f3;padding:3px 11px;border-radius:20px;color:var(--muted)}
+.ptabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:0;overflow-x:auto}
+.ptabs button{border:0;background:none;padding:8px 14px;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
+.ptabs button.on{color:var(--ink);border-bottom-color:var(--pbi);font-weight:600}
+.acp{font-size:10.5px;background:var(--warn-soft);color:var(--warn);padding:0 6px;border-radius:10px;margin-left:6px;font-weight:500;white-space:nowrap}
+.canvas{border:1px solid var(--line);border-top:0;border-radius:0 0 10px 10px;padding:16px 18px;background:#fff;position:relative;min-height:260px}
+.hl .zone-portal{outline:2px dashed var(--accent);outline-offset:3px;position:relative}
+.hl .zone-pbi{outline:2px dashed var(--pbi);outline-offset:-2px}
+.zone-tag{display:none;position:absolute;top:-10px;right:10px;font-size:11px;font-weight:600;padding:1px 8px;border-radius:10px}
+.hl .zone-tag{display:block}
+.zone-portal > .zone-tag{background:var(--accent);color:#fff}
+.zone-pbi > .zone-tag{background:var(--pbi);color:#3d2e00;top:8px}
+.chart text{font-size:11px;fill:var(--muted)}
+.chart .val{font-size:10.5px;fill:var(--ink)}
+.hb{display:grid;grid-template-columns:170px minmax(0,1fr) 90px;gap:10px;align-items:center;font-size:13px;padding:4px 0}
+.hb .track{height:12px;background:#eef1f5;border-radius:6px;overflow:hidden}
+.hb .track i{display:block;height:100%;background:var(--accent);border-radius:6px}
+.hb .v{text-align:right;font-variant-numeric:tabular-nums}
+.sel-col{background:#fbf6e3}
+.state{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;min-height:240px;color:var(--muted)}
+.state .big{font-size:16px;color:var(--ink);font-weight:600}
+.skel{background:linear-gradient(90deg,#eef1f5 0%,#f7f9fb 50%,#eef1f5 100%);background-size:200% 100%;animation:sh 1.2s infinite;border-radius:8px}
+@keyframes sh{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.skel{animation:none}}
+@media (max-width:760px){.hb{grid-template-columns:110px minmax(0,1fr) 80px}.welcome .pn{font-size:20px}}
+/* sign-in (External ID look) */
+.signin{max-width:400px;margin:30px auto;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:30px}
+.signin .brandrow{display:flex;gap:10px;align-items:center;margin-bottom:18px;font-weight:650}
+.signin .sec{font-size:11.5px;color:var(--faint);margin-top:16px;text-align:center}
+.msbtn{display:flex;width:100%;gap:10px;align-items:center;justify-content:center;border:1px solid #8c8c8c;background:#fff;color:#5e5e5e;font-weight:600;padding:9px 12px;border-radius:4px;margin-top:16px}
+.msbtn:hover{background:#f3f3f3}
+.msgrid{display:inline-grid;grid-template-columns:9px 9px;gap:2px}
+.msgrid i{width:9px;height:9px;display:block}
+.or{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:12px;margin:16px 0 0}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+/* info pages */
+.journey{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px}
+.journey button{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:9px 11px;text-align:left;font-size:13px}
+.journey button:hover{border-color:var(--accent)}
+.journey button b{display:block;color:var(--accent-ink);font-size:12px;font-weight:600}
+.role-card ul{margin:6px 0 12px;padding-left:18px;font-size:13.5px}
+.arch-wrap{overflow-x:auto}
+.arch-wrap svg{min-width:640px;display:block}
+.steps{margin:10px 0 0;padding-left:20px;font-size:13.5px}
+.steps li{margin:3px 0}
+.flow{display:flex;flex-wrap:wrap;align-items:stretch;margin-top:8px}
+.flow .st{flex:1 1 130px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;position:relative;margin:0 14px 10px 0}
+.flow .st:not(:last-child)::after{content:"";position:absolute;right:-12px;top:50%;border:6px solid transparent;border-left-color:var(--faint);transform:translateY(-50%)}
+.flow .st b{display:block;font-size:13px}
+.flow .st span{font-size:12px}
+.flow .st .ico{margin-bottom:4px}
+.flow .st.me{background:#fff8e6;border-color:#f0d58a}
+.flow .st.auto{background:var(--robot-soft);border-color:#d6d0f3}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--muted);margin-top:4px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.pbisvc{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.pbisvc .bar{background:#252423;color:#fff;font-size:13px;padding:8px 14px;display:flex;gap:10px;align-items:center}
+.ico{display:inline-block;vertical-align:middle;flex:none}
+.techs{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:10px}
+.tech{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;font-size:13px}
+.tech b{display:block;font-size:13px}
+.tech span{color:var(--muted);font-size:12px}
+.walls{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.wall{display:grid;grid-template-columns:34px 190px minmax(0,1fr);gap:12px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff}
+.wall .n{width:28px;height:28px;border-radius:50%;background:#14324a;color:#fff;display:grid;place-items:center;font-weight:600;font-size:13px}
+.wall b{font-size:13.5px}
+.wall span{font-size:13px;color:var(--muted)}
+@media (max-width:700px){.wall{grid-template-columns:34px minmax(0,1fr)}.wall span{grid-column:2}}
+.lc{list-style:none;margin:0;padding:0}
+.lc-phase{font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin:16px 0 6px}
+.lc li{display:grid;grid-template-columns:30px minmax(0,1fr) 130px;gap:10px;align-items:start;padding:9px 0;border-bottom:1px solid var(--line)}
+.lc .no{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:600}
+.lc .who{font-size:12px;padding:2px 9px;border-radius:20px;text-align:center;justify-self:end;white-space:nowrap}
+.k-acp .no,.k-acp .who{background:#fff3d6;color:#7a5400}
+.k-client .no,.k-client .who{background:#e3f1f6;color:#0d5c74}
+.k-auto .no,.k-auto .who{background:var(--robot-soft);color:var(--robot)}
+.lc .d{font-size:12.5px;color:var(--muted)}
+.meter{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:10px 0 6px}
+.meter i{display:block;height:100%}
+@media (max-width:640px){.lc li{grid-template-columns:30px minmax(0,1fr)}.lc .who{grid-column:2;justify-self:start}}
+/* notes */
+#notes{position:sticky;top:80px;align-self:start;max-height:calc(100vh - 100px);overflow:auto}
+#notes h2{display:flex;align-items:center;gap:8px}
+.robot{width:24px;height:22px;border-radius:6px;background:var(--robot);color:#fff;display:grid;place-items:center;font-size:10.5px;font-weight:700}
+.note{border-left:3px solid var(--robot);background:var(--robot-soft);border-radius:0 8px 8px 0;padding:8px 10px;margin-bottom:10px}
+.note .t{font-weight:600;font-size:13px;color:var(--robot)}
+.note ul{margin:4px 0 0;padding-left:16px;font-size:12.5px}
+/* modal + toast */
+.veil{position:fixed;inset:0;background:rgba(20,26,38,.42);display:grid;place-items:center;padding:16px;z-index:20}
+.modal{background:var(--card);border-radius:12px;max-width:500px;width:100%;padding:20px 22px;max-height:90vh;overflow:auto}
+.modal .actions{justify-content:flex-end}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 16px;border-radius:8px;font-size:13.5px;z-index:30;max-width:90vw}
+</style>
+<div class="shell">
+  <aside class="side">
+    <div class="brand"><span class="logo">ACP</span><span>Databook portal<small>Concept for review</small></span></div>
+    <nav aria-label="Pages">
+      <div class="grp">Start</div>
+      <button data-page="overview">Overview</button>
+      <div class="grp">Try it as</div>
+      <button data-page="client">Client</button>
+      <button data-page="acp">ACP team</button>
+      <div class="grp">Behind it</div>
+      <button data-page="steps">Step by step</button>
+      <button data-page="security">Security</button>
+      <button data-page="powerbi">Power BI setup</button>
+      <button data-page="automation">Automation</button>
+      <button data-page="arch">How it works</button>
+      <button data-page="maint">Maintenance</button>
+      <div class="grp">Decide</div>
+      <button data-page="plan">The plan</button>
+    </nav>
+  </aside>
+  <div class="main">
+    <header class="top">
+      <div><h1 id="ptitle"></h1><div class="sub" id="psub"></div></div>
+      <span class="spacer"></span>
+      <label class="chk" id="notesToggle"><input type="checkbox" id="showNotes" checked> Behind the scenes</label>
+      <button class="btn primary" onclick="startTour(0)">Guided tour</button>
+    </header>
+    <div class="tour" id="tour" hidden></div>
+    <div class="content" id="content">
+      <main id="screen"></main>
+      <aside id="notes" class="card">
+        <h2><span class="robot">API</span>Behind the scenes</h2>
+        <p class="sub" style="margin-top:-4px">What the backend does for each click. Every Power BI call runs as the client's own service principal profile.</p>
+        <div id="noteList"><p class="empty">Click something on the left.</p></div>
+      </aside>
+    </div>
+  </div>
+</div>
+<div id="overlay"></div>
+
+<script>
+/* ---------- example data (no real client data) ---------- */
+const TODAY = '2026-10-29';
+const COMPANIES = { '001':'Muster Holding AG', '002':'Muster GmbH', '003':'Muster Logistik GmbH', '101':'Beispiel AG', '201':'Probe SE' };
+const fin = {
+  'Muster Holding AG':    { rev:[4.0,4.2,4.5],    mat:[-0.5,-0.5,-0.6], pers:[-1.6,-1.7,-1.8], oth:[-0.6,-0.6,-0.7], bs:{fa:5.0,inv:0.0,rec:0.3,cash:2.2,eq:4.8,debt:2.4,pay:0.3}, monthly:[0.37,0.37,0.37,0.38,0.37,0.38,0.38,0.37,0.38,0.38,0.37,0.38] },
+  'Muster GmbH':          { rev:[18.2,19.6,21.4], mat:[-7.9,-8.4,-9.1], pers:[-5.6,-5.9,-6.3], oth:[-2.1,-2.2,-2.4], bs:{fa:8.4,inv:3.1,rec:3.5,cash:1.6,eq:7.2,debt:5.9,pay:3.5}, monthly:[1.6,1.6,1.7,1.8,1.7,1.9,1.8,1.6,1.9,2.0,1.9,1.9] },
+  'Muster Logistik GmbH': { rev:[6.1,6.4,6.9],    mat:[-2.2,-2.3,-2.5], pers:[-2.4,-2.5,-2.6], oth:[-0.7,-0.7,-0.8], bs:{fa:4.2,inv:0.4,rec:1.1,cash:0.5,eq:2.3,debt:3.1,pay:0.8}, monthly:[0.5,0.5,0.6,0.6,0.6,0.6,0.6,0.5,0.6,0.6,0.6,0.6] },
+  'Beispiel AG':          { rev:[31.0,29.4,33.8], mat:[-14.2,-13.6,-15.5], pers:[-8.1,-8.4,-8.9], oth:[-3.0,-3.1,-3.3], bs:{fa:12.0,inv:4.4,rec:5.2,cash:2.1,eq:10.1,debt:9.0,pay:4.6}, monthly:[2.6,2.7,2.8,2.9,2.8,3.0,2.7,2.5,2.9,3.0,2.9,3.0] },
+  'Probe SE':             { rev:[9.8,10.3,10.1],  mat:[-4.0,-4.2,-4.1], pers:[-3.1,-3.3,-3.4], oth:[-1.0,-1.1,-1.1], bs:{fa:3.3,inv:1.2,rec:1.9,cash:0.6,eq:2.8,debt:2.6,pay:1.6}, monthly:[0.8,0.8,0.9,0.9,0.8,0.9,0.8,0.7,0.9,0.9,0.9,0.8] }
+};
+const YEARS = ['FY2023','FY2024','FY2025'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const NWC_SEASON = [1.08,1.05,1.02,0.98,0.97,1.00,1.03,1.06,1.01,0.97,0.95,0.98];
+
+const CLIENTS = [
+  { key:'c_muster',   name:'Muster group', domains:['muster-gmbh.example'], profile:'3f9a-c21e', companies:['001','002','003'], federated:true },
+  { key:'c_beispiel', name:'Beispiel AG',  domains:['beispiel.example'],    profile:'8b21-07d4', companies:['101'], federated:false },
+  { key:'c_probe',    name:'Probe SE',     domains:['probe.example'],       profile:'c47e-9a10', companies:['201'], federated:false }
+];
+const REPORTS = {
+  databook:   { title:'Databook', desc:'Key figures, statements and working capital in one place', pages:['overview','pl','bs','cf','nwc','checks'] },
+  statements: { title:'Income statement and balance sheet', desc:'Three years side by side, with margins', pages:['pl','bs','checks'] },
+  cashflow:   { title:'Cash flow and working capital', desc:'Where cash came from and went; NWC in months of revenue', pages:['cf','nwc'] },
+  group:      { title:'Group view', desc:'Each company of the group side by side', pages:['group','pl','checks'] }
+};
+const PAGE_NAMES = { overview:'Overview', pl:'Income statement', bs:'Balance sheet', cf:'Cash flow', nwc:'Net working capital', group:'Companies', checks:'Data checks' };
+const ACP_ONLY = ['checks'];
+const RANKS = ['Partner','Director','Senior Manager','Manager','Senior Consultant','Consultant','Junior Consultant','Working student','BI dev team'];
+const RANK_DEFAULT = { 'Partner':'Lead', 'Director':'Lead', 'Senior Manager':'Lead', 'Manager':'Lead', 'Senior Consultant':'Member', 'Consultant':'Member', 'Junior Consultant':'Member', 'Working student':'Viewer', 'BI dev team':'Viewer' };
+const ALL_RIGHTS = ['View','Upload','View as client','Release (not own upload)','Manage people'];
+const ROLE_RIGHTS = { Lead:ALL_RIGHTS, Member:['View','Upload','View as client'], Viewer:['View'] };
+const FUNCS = ['Managing director','CFO','Head of accounting','Controller','Other'];
+const CHECKS_OK = [['Balance sheet balances',true,'Difference EUR 0,0 m'],['Income statement ties to the FIN Tool',true,'Difference EUR 0,0 m'],['Accounts without mapping',true,'0 accounts'],['Every client table filtered by the Client role',true,'All tables']];
+
+const DIRECTORY = [
+  { name:'P. Peters',  email:'p.peters@acp.example',  rank:'Partner', portfolio:['c_muster','c_beispiel'] },
+  { name:'D. Lehmann', email:'d.lehmann@acp.example', rank:'Director', portfolio:['c_probe'] },
+  { name:'M. Meier',   email:'m.meier@acp.example',   rank:'Senior Manager' },
+  { name:'A. Muster',  email:'a.muster@acp.example',  rank:'Manager' },
+  { name:'K. Klein',   email:'k.klein@acp.example',   rank:'Senior Consultant' },
+  { name:'L. Lange',   email:'l.lange@acp.example',   rank:'Consultant' },
+  { name:'J. Jung',    email:'j.jung@acp.example',    rank:'Junior Consultant' },
+  { name:'W. Weber',   email:'w.weber@acp.example',   rank:'Working student' },
+  { name:'Sejal',      email:'sejal@acp.example',     rank:'BI dev team', admin:true },
+  { name:'T. Thal',    email:'t.thal@acp.example',    rank:'BI dev team', admin:true }
+];
+const CLIENT_USERS = [
+  { name:'B. Beispiel', email:'b.beispiel@muster-gmbh.example', client:'c_muster', func:'CFO', admin:true, state:'Active' },
+  { name:'C. Probe',    email:'c.probe@muster-gmbh.example',    client:'c_muster', func:'Head of accounting', admin:false, state:'Invited' },
+  { name:'F. Probe',    email:'f.probe@probe.example',          client:'c_probe',  func:'Managing director', admin:true, state:'Active' }
+];
+let PROJECTS = [
+  { key:'p_7Kq2xV', id:'DB-1042', client:'c_muster', name:'Muster carve-out', companies:['002','003'], end:'2027-03-31', restricted:false,
+    reports:['databook','statements','cashflow'],
+    live:{ v:2, file:'Databook_Muster_carveout_v2.pbix', template:'1.6', asOf:'2026-08-31', released:'2026-10-24', by:'M. Meier' },
+    draft:null, versions:[{ v:1, file:'Databook_Muster_carveout_v1.pbix', released:'2026-10-10' }],
+    note:'August closing added. Net working capital is now shown in months of revenue.', checks:CHECKS_OK,
+    team:[{ email:'a.muster@acp.example', role:'Lead' },{ email:'m.meier@acp.example', role:'Lead' },{ email:'l.lange@acp.example', role:'Member' },{ email:'w.weber@acp.example', role:'Viewer' }],
+    clients:[{ email:'b.beispiel@muster-gmbh.example', codes:['002'], pdf:false, until:'2027-03-31' },{ email:'c.probe@muster-gmbh.example', codes:['003'], pdf:false, until:'2027-03-31' }] },
+  { key:'p_R2mW9a', id:'DB-1045', client:'c_muster', name:'Muster refinancing 2027', companies:['001','002','003'], end:'2027-06-30', restricted:false,
+    reports:['databook','statements','cashflow','group'],
+    live:{ v:1, file:'Databook_Muster_refi_v1.pbix', template:'1.6', asOf:'2026-09-30', released:'2026-10-20', by:'K. Klein' },
+    draft:null, versions:[], note:'First release for the lenders’ review: all three group companies, September closing.', checks:CHECKS_OK,
+    team:[{ email:'a.muster@acp.example', role:'Lead' },{ email:'k.klein@acp.example', role:'Lead' },{ email:'m.meier@acp.example', role:'Member' }],
+    clients:[{ email:'b.beispiel@muster-gmbh.example', codes:'all', pdf:true, until:'2027-06-30' }] },
+  { key:'p_9TbQ4e', id:'DB-1043', client:'c_beispiel', name:'Beispiel refinancing', companies:['101'], end:'2027-01-15', restricted:false,
+    reports:['databook','statements','cashflow'], live:null,
+    draft:{ v:1, file:'Databook_Beispiel_v1.pbix', template:'1.6', asOf:'2026-09-30', uploadedBy:'j.jung@acp.example', uploaded:'2026-10-25' },
+    versions:[], note:'', checks:CHECKS_OK,
+    team:[{ email:'k.klein@acp.example', role:'Lead' },{ email:'j.jung@acp.example', role:'Member' }], clients:[] },
+  { key:'p_Ld83Hs', id:'DB-1031', client:'c_probe', name:'Probe vendor DD', companies:['201'], end:'2026-12-31', restricted:true,
+    reports:['databook','statements'],
+    live:{ v:1, file:'Databook_Probe_v1.pbix', template:'1.5', asOf:'2026-06-30', released:'2026-08-02', by:'D. Lehmann' },
+    draft:null, versions:[], note:'Vendor due diligence, first half-year 2026.', checks:[['Balance sheet balances',true,'Difference EUR 0,0 m'],['Template version',false,'1.5; minimum is 1.6']],
+    team:[{ email:'d.lehmann@acp.example', role:'Lead' }], clients:[{ email:'f.probe@probe.example', codes:'all', pdf:false, until:'2026-12-31' }] }
+];
+const ACTIVITY = {
+  'p_7Kq2xV|b.beispiel@muster-gmbh.example':{ last:'27.10.2026, 09:14', views:14, top:'Net working capital', weeks:[1,3,2,4,2,5,3,6] },
+  'p_7Kq2xV|c.probe@muster-gmbh.example':   { last:'not yet', views:0, top:'-', weeks:[0,0,0,0,0,0,0,0] },
+  'p_R2mW9a|b.beispiel@muster-gmbh.example':{ last:'28.10.2026, 17:40', views:9, top:'Companies', weeks:[0,0,0,0,0,2,3,4] },
+  'p_Ld83Hs|f.probe@probe.example':         { last:'12.10.2026, 11:02', views:22, top:'Balance sheet', weeks:[3,4,2,5,3,2,2,1] }
+};
+const AUDIT = [
+  ['28.10.2026 17:40','B. Beispiel','Embed token issued','DB-1045 Group view','Client role, codes 001|002|003, 30 min'],
+  ['28.10.2026 11:05','A. Muster','Grant changed','DB-1042 C. Probe','Companies: Muster Logistik GmbH'],
+  ['27.10.2026 22:13','unknown session','Denied','p_R2mW9a (embed)','No grant; 404 returned'],
+  ['25.10.2026 15:30','J. Jung','Upload rejected','DB-1043','Template 1.4 found'],
+  ['24.10.2026 16:02','M. Meier','Released','DB-1042 v2','Uploaded by L. Lange; four-eyes satisfied']
+];
+const HEALTH = {
+  imports:[{ when:'25.10.2026', project:'DB-1043', who:'J. Jung', file:'Databook_Beispiel_old.pbix', result:'Rejected: template 1.4' },{ when:'24.10.2026', project:'DB-1042', who:'L. Lange', file:'Databook_Muster_carveout_v2.pbix', result:'Passed' }],
+  embeds:[{ project:'DB-1042', report:'Databook', count:2, last:'27.10.2026', msg:'Report load timed out (capacity busy)' }]
+};
+const settings = { minTemplate:'1.6', clientPdf:false, keep:'90', staleAmber:90, staleRed:180 };
+let nextId = 1046;
+
+const state = { page:'overview', notes:true, tour:null, highlight:false,
+  rep:{ page:'overview', year:2, sel:null },
+  cl:{ stage:'signin', email:'b.beispiel@muster-gmbh.example', view:'home', pkey:null, rkey:null, demo:'ready', menu:null },
+  acp:{ user:'a.muster@acp.example', tab:'analytics', view:'portfolio', ckey:null, pkey:null, rkey:null, viewAs:'ACP', upload:null, addType:'acp', pick:null, admTab:'users', breakGlass:{} } };
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const fmt = n => n.toLocaleString('de-DE', { minimumFractionDigits:1, maximumFractionDigits:1 });
+const fmt2 = n => n.toLocaleString('de-DE', { minimumFractionDigits:2, maximumFractionDigits:2 });
+const de = iso => iso.split('-').reverse().join('.');
+const initials = n => n.replace(/[^A-Za-z ]/g, '').split(' ').filter(Boolean).map(x => x[0]).join('').slice(0, 2).toUpperCase() || n.slice(0, 2).toUpperCase();
+const nm = code => COMPANIES[code];
+const names = codes => codes.map(nm);
+const clientOf = p => CLIENTS.find(c => c.key === p.client);
+const proj = key => PROJECTS.find(p => p.key === key);
+const acpUser = email => DIRECTORY.find(d => d.email === email);
+const clUser = email => CLIENT_USERS.find(d => d.email === email);
+const me = () => acpUser(state.acp.user);
+const roleIn = (p, u) => { const t = p.team.find(x => x.email === u.email); return t ? t.role : null; };
+const viaPortfolio = (p, u) => !!(u.portfolio && u.portfolio.includes(p.client) && !p.restricted);
+const breakGlass = p => !!state.acp.breakGlass[p.key];
+const canSee = (p, u) => !!roleIn(p, u) || viaPortfolio(p, u) || (u.admin && breakGlass(p));
+const visibleTo = u => PROJECTS.filter(p => canSee(p, u));
+const codesOf = (g, p) => g.codes === 'all' ? p.companies : g.codes;
+const daysOld = iso => Math.round((Date.parse(TODAY) - Date.parse(iso)) / 864e5);
+const freshBadge = iso => { const d = daysOld(iso); const c = d >= settings.staleRed ? 'b-bad' : d >= settings.staleAmber ? 'b-warn' : 'b-ok'; return `<span class="fresh ${c}">${de(iso)} &middot; ${d} days</span>`; };
+const lockIcon = '<svg width="11" height="12" viewBox="0 0 11 12" aria-hidden="true"><rect x="1" y="5" width="9" height="6.5" rx="1.5" fill="currentColor"/><path d="M3 5V3.5a2.5 2.5 0 0 1 5 0V5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>';
+let noteNo = 0;
+function note(title, lines){
+  noteNo++;
+  const list = $('#noteList');
+  if (list.querySelector('.empty')) list.innerHTML = '';
+  list.insertAdjacentHTML('afterbegin', `<div class="note"><div class="t">${noteNo}. ${esc(title)}</div><ul>${lines.map(l => `<li>${l}</li>`).join('')}</ul></div>`);
+}
+function audit(who, what, target, detail){ AUDIT.unshift(['29.10.2026 ' + new Date().toTimeString().slice(0, 5), who, what, target, detail]); }
+function toast(t){ const el = document.createElement('div'); el.className = 'toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2600); }
+function modal(html){ $('#overlay').innerHTML = `<div class="veil" onclick="if(event.target===this)closeModal()"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`; const f = $('#overlay input, #overlay select'); if (f) f.focus(); }
+function closeModal(){ $('#overlay').innerHTML = ''; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape'){ closeModal(); state.cl.menu = null; } });
+
+/* ---------- icons (simplified for this concept) ---------- */
+const ICONS = {
+  pbi:'<rect x="3" y="12" width="5" height="9" rx="1.2" fill="#e8b100"/><rect x="9.5" y="7" width="5" height="14" rx="1.2" fill="#f2c811"/><rect x="16" y="3" width="5" height="18" rx="1.2" fill="#c99700"/>',
+  fabric:'<path d="M3 8c4-5 13-5 18 0l-3.5 4c-3-2.6-8-2.6-11 0z" fill="#20a68f"/><path d="M3 14c4-4 13-4 18 1l-3.5 4c-3-2.6-8-3-11-.6z" fill="#0f7c69"/>',
+  azure:'<path d="M9.6 3h5.2L8.2 21H2.4z" fill="#0a64ad"/><path d="M14.8 3l6.8 18h-9.8l3.2-3.6h-3.8z" fill="#3c9ee8"/>',
+  entra:'<path d="M12 2l9.5 10L12 22 2.5 12z" fill="#1490df"/><path d="M12 2l9.5 10L12 16z" fill="#5fc0f5"/>',
+  external:'<path d="M12 2l9.5 10L12 22 2.5 12z" fill="#0f7c69"/><path d="M12 2l9.5 10L12 16z" fill="#4cc3a8"/>',
+  functions:'<path d="M6 4L2.5 12 6 20M18 4l3.5 8-3.5 8" fill="none" stroke="#0078d4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.5 3L8 13h4l-2 8 6.5-11h-4.2z" fill="#f2b200"/>',
+  appsvc:'<rect x="2" y="3" width="20" height="18" rx="3" fill="#0078d4"/><circle cx="12" cy="12" r="5.5" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M6.5 12h11M12 6.5c2 2 2 9 0 11M12 6.5c-2 2-2 9 0 11" fill="none" stroke="#fff" stroke-width="1.2"/>',
+  sql:'<ellipse cx="12" cy="5.5" rx="8" ry="3" fill="#5ea0ef"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13c0 1.7-3.6 3-8 3s-8-1.3-8-3z" fill="#0078d4"/>',
+  blob:'<rect x="3" y="4" width="18" height="16" rx="2" fill="#0078d4"/><rect x="6" y="7" width="5" height="4" fill="#fff"/><rect x="13" y="7" width="5" height="4" fill="#9fd0f5"/><rect x="6" y="13" width="5" height="4" fill="#9fd0f5"/><rect x="13" y="13" width="5" height="4" fill="#fff"/>',
+  keyvault:'<circle cx="12" cy="12" r="10" fill="#0078d4"/><circle cx="8.8" cy="12" r="2.8" fill="none" stroke="#f2c811" stroke-width="2"/><path d="M11.6 12h6.4M16 12v3" stroke="#f2c811" stroke-width="2" fill="none" stroke-linecap="round"/>',
+  identity:'<circle cx="12" cy="12" r="10" fill="#5a4ab4"/><circle cx="12" cy="9.5" r="3.2" fill="#fff"/><path d="M6.5 18c.8-3 3-4.4 5.5-4.4s4.7 1.4 5.5 4.4" fill="#fff"/>',
+  react:'<g fill="none" stroke="#149eca" stroke-width="1.3"><ellipse cx="12" cy="12" rx="10" ry="4"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)"/></g><circle cx="12" cy="12" r="2" fill="#149eca"/>',
+  dotnet:'<rect x="2" y="2" width="20" height="20" rx="4" fill="#512bd4"/><text x="12" y="15" text-anchor="middle" font-size="7.5" font-weight="700" fill="#fff" font-family="Segoe UI,Arial,sans-serif">.NET</text>',
+  github:'<circle cx="12" cy="12" r="10" fill="#24292f"/><path d="M9.2 18.2v-2.1c-2.2.5-2.7-1-2.7-1M14.8 18.2v-2.4c0-.8-.3-1.3-.7-1.6 2.2-.3 3.4-1.2 3.4-3.5 0-.8-.3-1.5-.8-2 .1-.4.2-1.2-.1-2.1 0 0-.7-.2-2.2.8a7.5 7.5 0 0 0-3.4 0C6.8 6.4 6.1 6.6 6.1 6.6c-.3.9-.2 1.7-.1 2.1-.5.5-.8 1.2-.8 2 0 2.3 1.2 3.2 3.4 3.5-.3.3-.6.7-.6 1.4v2.6" fill="none" stroke="#fff" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"/>',
+  acs:'<rect x="2" y="5" width="20" height="14" rx="2" fill="#0078d4"/><path d="M3 6.5l9 6.5 9-6.5" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>',
+  insights:'<path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" fill="#8661c5"/><rect x="8.5" y="18.2" width="7" height="1.8" rx=".9" fill="#8661c5"/><rect x="9.6" y="21" width="4.8" height="1.6" rx=".8" fill="#8661c5"/>',
+  bicep:'<rect x="2" y="2" width="20" height="20" rx="4" fill="#0f6cbd"/><path d="M7 16c.8-4.5 3-7.5 6-8.3 2.2-.4 3.2 1.1 2.2 2.8-.8 1.3-3 1.3-3 3.1 0 1.3 1.2 2.1 3.6 2.1" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>',
+  acp:'<rect x="1" y="1" width="22" height="22" rx="5" fill="#1d5c8c"/><text x="12" y="15.5" text-anchor="middle" font-size="8" font-weight="700" fill="#fff" font-family="Segoe UI,Arial,sans-serif">ACP</text>',
+  person:'<circle cx="12" cy="8" r="4" fill="#8b93a5"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z" fill="#8b93a5"/>'
+};
+const ico = (k, s = 24) => `<svg class="ico" width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>`;
+const icoAt = (k, x, y, s = 24) => `<g transform="translate(${x} ${y}) scale(${s / 24})">${ICONS[k]}</g>`;
+const TECH = [['acp','Databook portal','ACP web page'],['react','React','Portal pages'],['appsvc','Azure App Service','Backend-for-frontend'],['dotnet','.NET 10 (LTS)','API and session'],['functions','Azure Functions','Imports, checks, timers'],['external','Entra External ID','Client sign-in'],['entra','Microsoft Entra ID','ACP sign-in'],['sql','Azure SQL','Grants, audit, KPIs'],['blob','Blob storage','Uploaded files'],['identity','Managed identity','No secrets'],['keyvault','Key Vault','Configuration'],['acs','Communication Services','Emails'],['insights','Application Insights','Logs, alerts'],['pbi','Power BI Embedded','The reports'],['fabric','Fabric F2 capacity','Runs the reports'],['github','GitHub','Code, deployment'],['bicep','Bicep','Azure setup as code']];
+const techStrip = () => `<div class="techs">${TECH.map(([k, n, t]) => `<div class="tech">${ico(k, 26)}<div><b>${n}</b><span>${t}</span></div></div>`).join('')}</div>`;
+
+/* ---------- finance maths ---------- */
+function agg(companies){
+  const sum = (k, i) => companies.reduce((s, c) => s + fin[c][k][i], 0);
+  const out = { rev:[], mat:[], pers:[], oth:[], ebitda:[], monthly:[], bs:{} };
+  for (let i = 0; i < 3; i++){ ['rev','mat','pers','oth'].forEach(k => out[k].push(sum(k, i))); out.ebitda.push(out.rev[i] + out.mat[i] + out.pers[i] + out.oth[i]); }
+  for (let m = 0; m < 12; m++) out.monthly.push(companies.reduce((s, c) => s + fin[c].monthly[m], 0));
+  ['fa','inv','rec','cash','eq','debt','pay'].forEach(k => out.bs[k] = companies.reduce((s, c) => s + fin[c].bs[k], 0));
+  return out;
+}
+function bsFor(d, y){ const f = d.rev[y] / d.rev[2], b = {}; Object.keys(d.bs).forEach(k => b[k] = d.bs[k] * f); return b; }
+function kpiSet(codes){
+  const d = agg(names(codes)), y = 2, b = bsFor(d, y), nwc = b.inv + b.rec - b.pay;
+  const chg = (a, p) => (a / p - 1) * 100;
+  const d1 = agg(names(codes)), b1 = bsFor(d1, 1), nwc1 = b1.inv + b1.rec - b1.pay;
+  return [
+    { l:'Revenue', v:fmt(d.rev[y]), u:'EUR m, FY2025', ch:chg(d.rev[y], d.rev[y - 1]), s:d.monthly },
+    { l:'EBITDA', v:fmt(d.ebitda[y]), u:`EUR m, margin ${fmt(d.ebitda[y] / d.rev[y] * 100)} %`, ch:chg(d.ebitda[y], d.ebitda[y - 1]), s:d.monthly.map(v => v * d.ebitda[y] / d.rev[y]) },
+    { l:'Net working capital', v:fmt2(nwc / (d.rev[y] / 12)), u:'months of revenue', ch:null, s:NWC_SEASON },
+    { l:'Net debt / EBITDA', v:fmt2((b.debt - b.cash) / d.ebitda[y]) + 'x', u:`net debt EUR ${fmt(b.debt - b.cash)} m`, ch:null, s:null },
+    { l:'Cash', v:fmt(b.cash), u:'EUR m at year end', ch:chg(b.cash, b1.cash), s:null }
+  ];
+}
+function kpiCards(codes){
+  return `<div class="kcards">${kpiSet(codes).map(k => `<div class="kcard"><div class="l">${k.l}</div><div class="v">${k.v}</div><div class="u">${k.u}</div>
+    <div class="d">${k.ch === null ? '<span class="sub">&nbsp;</span>' : `<span class="${k.ch >= 0 ? 'up' : 'down'}">${k.ch >= 0 ? '&#9650;' : '&#9660;'} ${fmt(Math.abs(k.ch))} % vs FY2024</span>`}${k.s ? spark(k.s) : ''}</div></div>`).join('')}</div>`;
+}
+
+/* ---------- small charts ---------- */
+function bars(vals, labels, label, fmtv){
+  const W = 640, H = 220, L = 8, T = 18, B = 24, max = Math.max(...vals) * 1.15 || 1, bw = (W - L) / vals.length;
+  const grid = [0.25, 0.5, 0.75, 1].map(f => { const y = H - B - f * (H - B - T); return `<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="#eef0f4"/>`; }).join('');
+  const marks = vals.map((v, i) => { const h = v / max * (H - B - T), x = L + i * bw + bw * 0.18, w = bw * 0.64, y = H - B - h;
+    return `<g><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="#1d5c8c"><title>${labels[i]}: ${fmtv(v)}</title></rect><text class="val" x="${x + w / 2}" y="${y - 5}" text-anchor="middle">${fmtv(v)}</text><text x="${x + w / 2}" y="${H - 7}" text-anchor="middle">${labels[i]}</text></g>`; }).join('');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(label)}">${grid}<line x1="${L}" x2="${W}" y1="${H - B}" y2="${H - B}" stroke="#c9cfd8"/>${marks}</svg>`;
+}
+function hbars(items){
+  const max = Math.max(...items.map(x => x[1])) || 1;
+  return items.map(([n, v]) => `<div class="hb"><span>${esc(n)}</span><span class="track"><i style="width:${(v / max * 100).toFixed(1)}%"></i></span><span class="v">EUR ${fmt(v)} m</span></div>`).join('');
+}
+function spark(arr){
+  const W = 80, H = 24, max = Math.max(...arr), min = Math.min(...arr), rng = max - min || 1;
+  const pts = arr.map((v, i) => `${(i / (arr.length - 1) * (W - 4) + 2).toFixed(1)},${(H - 3 - (v - min) / rng * (H - 6)).toFixed(1)}`).join(' ');
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Trend"><polyline points="${pts}" fill="none" stroke="#1d5c8c" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+}
+function thumb(type){
+  const navy = '#1d5c8c', teal = '#2a8f86', amber = '#e8b100', grey = '#dde3ea';
+  let g = '';
+  if (type === 'databook'){
+    g = [0, 1, 2].map(i => `<rect x="${16 + i * 84}" y="14" width="76" height="30" rx="5" fill="#fff" stroke="${grey}"/><rect x="${24 + i * 84}" y="22" width="34" height="5" rx="2" fill="${grey}"/><rect x="${24 + i * 84}" y="31" width="22" height="7" rx="2" fill="${i === 1 ? teal : navy}"/>`).join('')
+      + [18, 26, 22, 30, 28, 36, 32, 40].map((h, i) => `<rect x="${20 + i * 31}" y="${100 - h}" width="18" height="${h}" rx="2" fill="${navy}" opacity="${0.55 + i * 0.05}"/>`).join('');
+  } else if (type === 'statements'){
+    g = `<rect x="16" y="14" width="248" height="12" rx="3" fill="${navy}" opacity=".85"/>` + [0, 1, 2, 3, 4].map(i => `<rect x="16" y="${34 + i * 14}" width="${90 - i * 6}" height="6" rx="2" fill="${grey}"/><rect x="${150}" y="${34 + i * 14}" width="30" height="6" rx="2" fill="${i === 4 ? navy : '#b8c4d2'}"/><rect x="${192}" y="${34 + i * 14}" width="30" height="6" rx="2" fill="${i === 4 ? navy : '#b8c4d2'}"/><rect x="${234}" y="${34 + i * 14}" width="30" height="6" rx="2" fill="${i === 4 ? amber : '#b8c4d2'}"/>`).join('');
+  } else if (type === 'cashflow'){
+    const steps = [[0, 46, navy], [46, -12, '#c0504d'], [34, -10, '#c0504d'], [24, 18, teal], [42, -8, '#c0504d'], [0, 34, navy]];
+    g = steps.map(([base, d, c], i) => { const y0 = 96 - Math.max(base, base + d) * 1.4, h = Math.abs(d) * 1.4; return `<rect x="${22 + i * 41}" y="${y0}" width="28" height="${h}" rx="2" fill="${c}"/>`; }).join('') + `<line x1="16" x2="264" y1="97" y2="97" stroke="${grey}"/>`;
+  } else {
+    g = [[200, navy], [150, navy], [96, teal], [60, amber]].map(([w, c], i) => `<rect x="16" y="${18 + i * 20}" width="56" height="8" rx="2" fill="${grey}"/><rect x="82" y="${16 + i * 20}" width="${w * 0.9}" height="12" rx="3" fill="${c}"/>`).join('');
+  }
+  return `<svg viewBox="0 0 280 110" role="img" aria-label="Preview of ${esc(REPORTS[type].title)}"><rect width="280" height="110" fill="#f4f7fa"/>${g}</svg>`;
+}
+
+/* ---------- pages ---------- */
+const PAGES = {
+  overview:['Databook portal','Clients open their Databook in a branded portal; ACP publishes it and sees across its clients'],
+  client:['Client','The portal as Berta Beispiel, CFO of the Muster group and client administrator, sees it'],
+  acp:['ACP team','The portal for ACP staff. Switch the signed-in person to see how project roles change what they can do'],
+  steps:['Step by step','Every step of one project: who does it, what runs by itself'],
+  security:['Security','Why Client A can never see Client B'],
+  powerbi:['Power BI setup','One profile and workspace per client, one model per project, nobody publishes by hand'],
+  automation:['Automation','What runs by itself and how hard each part is to build'],
+  arch:['How it works','What runs where, and one report view in five steps'],
+  maint:['Maintenance','What needs looking after in the long run'],
+  plan:['The plan','Phases, decisions and running cost']
+};
+const TRY = ['client','acp'];
+
+/* ---------- overview ---------- */
+function viewOverview(){
+  const j = [[1,'Client','Signs in: company account or email code'],[4,'Client','Analytics home of a project'],[6,'Client','Switches between two projects'],[7,'Client','Opens a detailed report'],[10,'Client admin','Invites a colleague'],[11,'ACP','Portfolio of own clients'],[15,'ACP','Uploads; checks run'],[17,'ACP','Previews as the client'],[19,'ACP','Another lead releases']];
+  return `<div class="stack"><div class="card"><h2 class="h">Clients open their Databook in a branded portal. ACP publishes it and sees across its clients.</h2>
+    <p class="lead">A client signs in with a second factor and lands on a summary of their project: key figures, the reports, what changed. A consultant drops the refreshed Databook, checks run by themselves, and another lead releases it. Every client has its own Power BI profile and workspace, so the platform itself keeps clients apart.</p>
+    <div class="kpis" style="margin-top:14px">
+      <div class="kpi"><div class="l">Viewers need</div><div class="v">No licence</div><div class="h">app owns data; ACP staff to confirm</div></div>
+      <div class="kpi"><div class="l">Running cost</div><div class="v">EUR 350 to 450</div><div class="h">a month on F2, approximate</div></div>
+      <div class="kpi"><div class="l">Walls between clients</div><div class="v">5</div><div class="h">grants, SQL, profile, token, RLS</div></div>
+      <div class="kpi"><div class="l">Steps for Sejal per project</div><div class="v">0</div><div class="h">support only</div></div></div>
+    <h3>One project, start to finish</h3><div class="sub">Click a step to jump there in the guided tour.</div>
+    <div class="journey">${j.map(([i, who, t], k) => `<button onclick="startTour(${i})"><b>${k + 1}. ${who}</b>${t}</button>`).join('')}</div>
+    <div class="actions"><button class="btn primary" onclick="startTour(0)">Start the guided tour</button><button class="btn" onclick="go('security')">Security</button><button class="btn" onclick="go('steps')">Step by step</button><button class="btn" onclick="go('plan')">The plan</button></div></div>
+  <div class="grid3">
+    <div class="card role-card"><h2>Client</h2><ul><li>Analytics home per project: KPIs, reports, release note</li><li>Project switcher when they hold several projects</li><li>Client admins invite colleagues, never beyond their own access</li></ul><button class="btn" onclick="go('client')">Open as client</button></div>
+    <div class="card role-card"><h2>ACP team</h2><ul><li>Portfolio, client and project analytics, only for granted projects</li><li>Lead, Member or Viewer per project; rank proposes the default</li><li>Restricted projects only for their named team</li></ul><button class="btn" onclick="go('acp')">Open as ACP</button></div>
+    <div class="card role-card"><h2>Sejal (platform admin)</h2><ul><li>Administration and health for everything</li><li>No client figures by default</li><li>Break-glass access: time-limited, with a reason, logged</li></ul><button class="btn" onclick="acpAs('sejal@acp.example','admin')">Open administration</button></div>
+  </div>
+  <div class="card"><h2>Built on Microsoft's standard parts</h2>${techStrip()}<p class="foot">Icons simplified for this concept.</p></div></div>`;
+}
+
+/* ---------- report frame (shared by client and ACP) ---------- */
+function resetRep(type){ state.rep = { page:REPORTS[type].pages[0], year:2, sel:null }; }
+function repPage(k){ state.rep.page = k; render(); }
+function repYear(i){ state.rep.year = i; render(); }
+function repComp(c, allowed){
+  const a = allowed.split(','); let s = state.rep.sel && state.rep.sel.length ? [...state.rep.sel] : [...a];
+  s = s.includes(c) ? s.filter(x => x !== c) : s.concat(c);
+  state.rep.sel = s.length ? a.filter(x => s.includes(x)) : [c]; render();
+}
+function reportFrame(o){
+  const r = state.rep, pages = REPORTS[o.type].pages.filter(pg => o.mode === 'acp' || !ACP_ONLY.includes(pg));
+  if (!pages.includes(r.page)) r.page = pages[0];
+  const sel = (r.sel || []).filter(c => o.codes.includes(c)), codes = sel.length ? sel : o.codes;
+  const yrs = `<div class="slicer"><span>Period</span>${YEARS.map((y, i) => `<button class="pill ${r.year === i ? 'on' : ''}" onclick="repYear(${i})">${y}</button>`).join('')}</div>`;
+  const comp = o.codes.length > 1
+    ? `<div class="slicer"><span>Companies</span>${o.codes.map(c => `<button class="pill ${codes.includes(c) ? 'on' : ''}" onclick="repComp('${c}','${o.codes.join(',')}')">${esc(nm(c))}</button>`).join('')}</div>`
+    : `<span class="lock">${lockIcon} ${esc(nm(o.codes[0]))}</span>`;
+  const exp = o.mode === 'acp' ? '<button class="btn small" onclick="exportRep(\'xlsx\')">Export to Excel</button>' : o.pdf ? '<button class="btn small" onclick="exportRep(\'pdf\')">Download PDF</button>' : '';
+  const tabs = pages.map(k => `<button class="${r.page === k ? 'on' : ''}" onclick="repPage('${k}')">${PAGE_NAMES[k]}${ACP_ONLY.includes(k) ? '<span class="acp">ACP only</span>' : ''}</button>`).join('');
+  const body = o.demo && o.demo !== 'ready' ? stateBox(o.demo) : repBody(r.page, names(codes), r.year, o);
+  return `<div class="${state.highlight ? 'hl' : ''}">
+    <div class="fbar zone-portal"><span class="zone-tag">Portal</span>${yrs}${comp}<span class="spacer"></span>${exp}</div>
+    <div class="ptabs zone-portal"><span class="zone-tag">Portal</span>${tabs}</div>
+    <div class="canvas zone-pbi"><span class="zone-tag">Power BI</span>${body}<p class="foot">Figures in EUR m. In the portal this area is the embedded Power BI report; filters above are applied through the embedding API for convenience, security comes from the token and the model.</p></div></div>`;
+}
+function stateBox(s){
+  if (s === 'loading') return `<div class="stack"><div class="skel" style="height:64px"></div><div class="skel" style="height:180px"></div><div class="sub" style="text-align:center">Preparing your report&hellip;</div></div>`;
+  if (s === 'error') return `<div class="state"><div class="big">The report could not be shown</div><div>Try again. If it keeps happening, your ACP team can look it up with reference <code>7f3c-91a2</code>.</div><div class="actions"><button class="btn" onclick="state.cl.demo='ready';render()">Try again</button></div></div>`;
+  if (s === 'busy') return `<div class="state"><div class="big">The report is taking longer than usual</div><div>We'll keep trying for a moment.</div></div>`;
+  if (s === 'denied') return `<div class="state"><div class="big">You don't have access to this project</div><div>Contact your ACP team if you think this is wrong.</div></div>`;
+  return `<div class="state"><div class="big">Nothing released yet</div><div>Your ACP team is preparing this Databook.</div></div>`;
+}
+function exportRep(kind){
+  note(kind === 'pdf' ? 'Client downloads PDF' : 'Export to Excel', [kind === 'pdf' ? 'Power BI export API renders the allowed pages with the same identity, on the server' : 'Export of the visible table, ACP roles only', 'Logged with who and when']);
+  toast(kind === 'pdf' ? 'Your PDF is being prepared' : 'Exported to Excel');
+}
+function repBody(page, comps, y, o){
+  const d = agg(comps), b = bsFor(d, y), f = d.rev[y] / d.rev[2];
+  const nwc = b.inv + b.rec - b.pay, months = nwc / (d.rev[y] / 12);
+  const row = (l, v, cls = '') => `<tr class="${cls}"><td>${l}</td><td class="num">${fmt(v)}</td></tr>`;
+  if (page === 'overview'){
+    const prior = y ? `${d.rev[y] >= d.rev[y - 1] ? '+' : ''}${fmt((d.rev[y] / d.rev[y - 1] - 1) * 100)} % vs prior year` : 'first year shown';
+    return `<div class="kpis">
+      <div class="kpi"><div class="l">Revenue ${YEARS[y]}</div><div class="v">${fmt(d.rev[y])}</div><div class="h">${prior}</div></div>
+      <div class="kpi"><div class="l">EBITDA ${YEARS[y]}</div><div class="v">${fmt(d.ebitda[y])}</div><div class="h">margin ${fmt(d.ebitda[y] / d.rev[y] * 100)} %</div></div>
+      <div class="kpi"><div class="l">Net working capital</div><div class="v">${fmt2(months)}</div><div class="h">months of revenue</div></div>
+      <div class="kpi"><div class="l">Net debt / EBITDA</div><div class="v">${fmt2((b.debt - b.cash) / d.ebitda[y])}x</div><div class="h">net debt ${fmt(b.debt - b.cash)}</div></div></div>
+      <h3>Revenue by month, ${YEARS[y]}</h3>${bars(d.monthly.map(v => v * f), MONTHS, 'Revenue by month', fmt)}`;
+  }
+  if (page === 'pl'){
+    const r = (l, a, cls = '') => `<tr class="${cls}"><td>${l}</td>${a.map((v, i) => `<td class="num ${i === y ? 'sel-col' : ''}">${fmt(v)}</td>`).join('')}</tr>`;
+    return `<div class="tbl-wrap"><table><thead><tr><th>EUR m</th>${YEARS.map((x, i) => `<th class="num ${i === y ? 'sel-col' : ''}">${x}</th>`).join('')}</tr></thead><tbody>
+      ${r('Revenue', d.rev)}${r('Cost of materials', d.mat)}${r('Personnel expenses', d.pers)}${r('Other operating expenses', d.oth)}${r('EBITDA', d.ebitda, 'tot')}
+      <tr><td class="sub">EBITDA margin in %</td>${d.ebitda.map((v, i) => `<td class="num sub ${i === y ? 'sel-col' : ''}">${fmt(v / d.rev[i] * 100)}</td>`).join('')}</tr></tbody></table></div>`;
+  }
+  if (page === 'bs'){
+    const dt = '31.12.' + (2023 + y);
+    return `<div class="grid2"><div class="tbl-wrap"><table><thead><tr><th>Assets</th><th class="num">${dt}</th></tr></thead><tbody>
+      ${row('Fixed assets', b.fa)}${row('Inventories', b.inv)}${row('Trade receivables', b.rec)}${row('Cash', b.cash)}${row('Total assets', b.fa + b.inv + b.rec + b.cash, 'tot')}</tbody></table></div>
+      <div class="tbl-wrap"><table><thead><tr><th>Equity and liabilities</th><th class="num">${dt}</th></tr></thead><tbody>
+      ${row('Equity', b.eq)}${row('Financial debt', b.debt)}${row('Trade payables', b.pay)}${row('Total equity and liabilities', b.eq + b.debt + b.pay, 'tot')}</tbody></table></div></div>`;
+  }
+  if (page === 'cf'){
+    const cfo = d.ebitda[y] - 0.012 * d.rev[y], cfi = -0.06 * d.rev[y], cff = -0.04 * d.rev[y];
+    return `<div class="tbl-wrap"><table><thead><tr><th>EUR m</th><th class="num">${YEARS[y]}</th></tr></thead><tbody>
+      ${row('Cash flow from operating activities', cfo)}${row('Cash flow from investing activities', cfi)}${row('Cash flow from financing activities', cff)}${row('Change in cash', cfo + cfi + cff, 'tot')}</tbody></table></div>`;
+  }
+  if (page === 'nwc'){
+    return `<div class="grid2"><div class="tbl-wrap"><table><thead><tr><th>Component</th><th class="num">EUR m</th></tr></thead><tbody>
+      ${row('Inventories', b.inv)}${row('Trade receivables', b.rec)}${row('Trade payables', -b.pay)}${row('Net working capital', nwc, 'tot')}</tbody></table>
+      <p class="sub">In months of revenue: <b>${fmt2(months)}</b></p></div>
+      <div><h3 style="margin-top:0">Months of revenue by month, ${YEARS[y]}</h3>${bars(NWC_SEASON.map(s => months * s), MONTHS, 'Net working capital in months of revenue', fmt2)}</div></div>`;
+  }
+  if (page === 'group'){
+    return `<h3 style="margin-top:0">Revenue by company, ${YEARS[y]}</h3>${hbars(comps.map(c => [c, fin[c].rev[y]]))}
+      <h3>EBITDA by company, ${YEARS[y]}</h3>${hbars(comps.map(c => { const x = fin[c]; return [c, x.rev[y] + x.mat[y] + x.pers[y] + x.oth[y]]; }))}
+      <p class="sub">Group totals come from the Databook's consolidation, never from adding these rows in the portal.</p>`;
+  }
+  return `<div class="msg warn" style="margin:0 0 12px">ACP only. Not in the client navigation, and the Client role filters its data to nothing, so opening it through the browser's developer tools shows nothing.</div>
+    <div class="tbl-wrap"><table><thead><tr><th>Check</th><th>Status</th><th>Detail</th></tr></thead><tbody>${(o.checks || CHECKS_OK).map(([c, s, t]) => `<tr><td>${c}</td><td><span class="badge ${s ? 'b-live' : 'b-bad'}">${s ? 'OK' : 'Check'}</span></td><td>${t}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+/* ---------- client ---------- */
+function clProjects(){ return PROJECTS.filter(p => p.clients.some(c => c.email === state.cl.email)); }
+function clGrant(p){ return p.clients.find(c => c.email === state.cl.email); }
+function conceptStrip(){
+  const opts = [['ready','Ready'],['loading','Loading'],['empty','Empty'],['error','Error'],['busy','Busy'],['denied','No access']];
+  return `<div class="concept"><b>Concept only:</b> show state <div class="seg">${opts.map(([k, t]) => `<button class="${state.cl.demo === k ? 'on' : ''}" onclick="state.cl.demo='${k}';render()">${t}</button>`).join('')}</div>
+    <label class="chk" style="color:#6b4e00"><input type="checkbox" ${state.highlight ? 'checked' : ''} onchange="state.highlight=this.checked;render()"> Show what Power BI renders</label></div>`;
+}
+function viewClient(){
+  const c = state.cl;
+  if (c.stage === 'signin') return `<div class="signin"><div class="brandrow"><span class="logo">ACP</span>ACP Databook</div>
+    <h2 class="h">Sign in</h2><div class="sub">Use the email your ACP team or your administrator invited.</div>
+    <button class="msbtn" onclick="clientMs()">${msLogo}Sign in with your company Microsoft account</button>
+    <div class="or">or with your portal account</div>
+    <label for="ci-mail">Email</label><input id="ci-mail" type="email" value="${esc(c.email)}">
+    <label for="ci-pw">Password</label><input id="ci-pw" type="password" placeholder="Any password works here">
+    <div class="err" id="ci-err"></div>
+    <div class="actions" style="justify-content:space-between"><button class="link" onclick="toast('Passkeys can be added after the first sign-in')">Sign in with a passkey</button><button class="btn primary" onclick="clientPw()">Next</button></div>
+    <div class="sec">Secured by Microsoft Entra External ID</div></div>`;
+  if (c.stage === 'ms'){ const cl = CLIENTS.find(x => x.key === clUser(c.email).client);
+    return `<div class="signin" style="border-radius:4px"><div class="ms" style="font-weight:600;color:#5e5e5e;margin-bottom:14px">${msLogo} Microsoft</div>
+    <div class="sub">${esc(cl.name)}</div><h2 class="h" style="margin:4px 0 10px">Sign in</h2>
+    <input type="email" value="${esc(c.email)}" aria-label="Work email" readonly>
+    <div class="sub" style="margin-top:10px">Your company's own sign-in and security rules apply here, including its second factor. ACP never sees your password.</div>
+    <div class="actions" style="justify-content:flex-end"><button class="btn" onclick="state.cl.stage='signin';render()">Back</button><button class="btn primary" style="border-radius:2px" onclick="clientMsDone()">Next</button></div></div>`; }
+  if (c.stage === 'otp') return `<div class="signin"><div class="brandrow"><span class="logo">ACP</span>ACP Databook</div>
+    <h2 class="h">Check your email</h2><div class="sub">We sent a code to ${esc(c.email.replace(/^(.).*(@.*)$/, '$1***$2'))}. It's valid for 10 minutes.</div>
+    <label for="ci-code">Code</label><input id="ci-code" type="text" inputmode="numeric" maxlength="8" placeholder="Any 6 digits work here">
+    <div class="err" id="ci-err"></div>
+    <div class="actions" style="justify-content:space-between"><button class="link" onclick="toast('A new code is on its way')">Send a new code</button><button class="btn primary" onclick="clientCode()">Verify</button></div>
+    <div class="sec">Secured by Microsoft Entra External ID</div></div>`;
+  const u = clUser(c.email), cl = CLIENTS.find(x => x.key === u.client), ps = clProjects();
+  if (!c.pkey || !ps.some(p => p.key === c.pkey)) c.pkey = (ps.find(p => p.live) || ps[0]).key;
+  const p = proj(c.pkey);
+  const sw = `<div class="switch"><button onclick="state.cl.menu=state.cl.menu==='sw'?null:'sw';render()" aria-haspopup="true" aria-expanded="${c.menu === 'sw'}">${esc(p.name)} <span class="chev">&#9660;</span></button>
+    ${c.menu === 'sw' ? `<div class="dropdown"><div class="t">Your projects at ${esc(cl.name)}</div>${ps.map(x => `<button class="${x.key === p.key ? 'on' : ''}" onclick="clSwitch('${x.key}')"><b>${esc(x.name)}</b><div class="sub">${x.live ? 'Data as of ' + de(x.live.asOf) : 'Being prepared'} &middot; ${esc(names(codesOf(clGrant(x), x)).join(', '))}</div></button>`).join('')}</div>` : ''}</div>`;
+  const um = `<div class="switch"><button onclick="state.cl.menu=state.cl.menu==='me'?null:'me';render()" style="padding:3px 10px 3px 4px" aria-haspopup="true"><span class="avatar c sm">${initials(u.name)}</span> ${esc(u.name)}</button>
+    ${c.menu === 'me' ? `<div class="dropdown right">${u.admin ? '<button onclick="clView(\'team\')">Team</button>' : ''}<button onclick="clView('account')">Account</button><button onclick="signOut()">Sign out</button></div>` : ''}</div>`;
+  const bar = `<div class="cl-bar"><span class="logo">ACP</span><span class="name" style="font-weight:650">Databook</span><span class="sub">${esc(cl.name)}</span>${sw}<span class="spacer"></span>
+    <button class="btn ghost" onclick="clView('home')">Analytics</button>${u.admin ? '<button class="btn ghost" onclick="clView(\'team\')">Team</button>' : ''}${um}</div>`;
+  let body;
+  if (c.demo === 'denied') body = `<div class="empty-state"><div class="big">You don't have access to this project</div><div>Contact your ACP team if you think this is wrong.</div><div class="actions" style="justify-content:center"><button class="btn" onclick="state.cl.demo='ready';clView('home')">Back to your projects</button></div></div>`;
+  else if (c.view === 'team') body = clTeam(u, cl);
+  else if (c.view === 'account') body = clAccount(u);
+  else if (c.view === 'report') body = clReport(p);
+  else body = clHome(p, u);
+  return conceptStrip() + `<div class="app">${bar}<div class="app-body">${body}</div></div>`;
+}
+function clHome(p, u){
+  const g = clGrant(p), codes = codesOf(g, p), lead = acpUser(p.team.find(t => t.role === 'Lead').email);
+  if (state.cl.demo === 'loading') return `<div class="skel" style="height:130px"></div><div class="kcards" style="margin-top:16px">${[1,2,3,4,5].map(() => '<div class="skel" style="height:96px"></div>').join('')}</div><div class="rcards" style="margin-top:20px">${[1,2,3].map(() => '<div class="skel" style="height:210px"></div>').join('')}</div>`;
+  if (!p.live || state.cl.demo === 'empty') return `<div class="welcome"><div><div class="hi">Welcome, ${esc(u.name.split(' ').pop())}</div><div class="pn">${esc(p.name)}</div><div class="chips"><span class="chip">Being prepared</span></div></div>
+    <div class="contact"><span>Your ACP contact</span><b>${esc(lead.name)}, ${lead.rank}</b><span>${esc(lead.email)}</span></div></div>
+    <div class="empty-state"><div class="big">Your ACP team is preparing this Databook</div><div>You'll get an email as soon as it's released.</div></div>`;
+  const ac = ACTIVITY[p.key + '|' + state.cl.email];
+  const cards = p.reports.map(t => `<div class="rcard"><span class="th">${thumb(t)}</span><div class="bd"><b>${esc(REPORTS[t].title)}</b><span class="sub">${esc(REPORTS[t].desc)}</span>
+    <span class="meta">Data as of ${de(p.live.asOf)} &middot; released ${de(p.live.released)} &middot; version ${p.live.v}</span>
+    <div class="row between" style="margin-top:8px">${p.live.released > '2026-10-21' ? '<span class="badge b-info">Updated since your last visit</span>' : '<span></span>'}<button class="btn primary small" onclick="clOpen('${t}')">Open</button></div></div></div>`).join('');
+  return `<div class="welcome"><div><div class="hi">Welcome back, ${esc(u.name.split(' ').pop())}</div><div class="pn">${esc(p.name)}</div>
+      <div class="chips"><span class="chip">Data as of ${de(p.live.asOf)}</span><span class="chip">Released ${de(p.live.released)}</span><span class="chip">Version ${p.live.v}</span><span class="chip">${esc(names(codes).join(', '))}</span></div></div>
+    <div class="contact"><span>Your ACP contact</span><b>${esc(lead.name)}, ${lead.rank}</b><span>${esc(lead.email)}</span></div></div>
+    <div class="section-h"><h2>Key figures</h2><span class="sub">As released on ${de(p.live.released)} &middot; ${esc(names(codes).join(', '))}</span></div>
+    ${kpiCards(codes)}
+    <div class="section-h"><h2>Reports</h2><span class="sub">${p.reports.length} available</span></div>
+    <div class="rcards">${cards}</div>
+    <div class="grid2" style="margin-top:18px"><div class="card"><h2>What changed in this release</h2><p style="margin:0">${esc(p.note)}</p><p class="sub" style="margin:8px 0 0">Released by ${esc(p.live.by)} on ${de(p.live.released)}</p></div>
+      <div class="card"><h2>Your access</h2><p style="margin:0">${esc(names(codes).join(', '))}</p><p class="sub" style="margin:8px 0 0">Until ${de(g.until)} &middot; ${g.pdf ? 'PDF download allowed' : 'view only'}${ac ? ' &middot; last opened ' + ac.last : ''}</p></div></div>`;
+}
+function clReport(p){
+  const g = clGrant(p), t = state.cl.rkey;
+  return `<div class="crumbs"><button onclick="clView('home')">Analytics</button> &rsaquo; <button onclick="clView('home')">${esc(p.name)}</button> &rsaquo; ${esc(REPORTS[t].title)}</div>
+    <div class="rv-head ${state.highlight ? 'hl' : ''}"><div class="zone-portal" style="padding:2px 0"><span class="zone-tag">Portal</span><h2 class="h">${esc(REPORTS[t].title)}</h2><div class="sub">Data as of ${de(p.live.asOf)} &middot; version ${p.live.v} &middot; ${esc(names(codesOf(g, p)).join(', '))}</div></div>
+    <div class="row"><button class="btn small" onclick="toast('Full screen')">Full screen</button></div></div>
+    ${reportFrame({ mode:'client', type:t, codes:codesOf(g, p), pdf:g.pdf, demo:state.cl.demo })}`;
+}
+function clTeam(u, cl){
+  const mine = clProjects();
+  const rows = CLIENT_USERS.filter(x => x.client === cl.key).map(x => { const gs = PROJECTS.filter(p => p.client === cl.key).map(p => { const g = p.clients.find(c => c.email === x.email); return g ? `${esc(p.name)}: ${esc(names(codesOf(g, p)).join(', '))}` : null; }).filter(Boolean);
+    return `<tr><td><b>${esc(x.name)}</b><div class="sub">${esc(x.email)}</div></td><td>${esc(x.func)}${x.admin ? ' <span class="badge b-lead">Admin</span>' : ''}</td><td>${gs.join('<br>') || '<span class="empty">none</span>'}</td><td><span class="badge ${x.state === 'Active' ? 'b-live' : 'b-warn'}">${x.state}</span></td></tr>`; }).join('');
+  const form = mine.map((p, i) => { const g = clGrant(p), codes = codesOf(g, p);
+    return `<div class="selbox"><label class="cbx" style="margin:0"><input type="checkbox" class="tp" data-p="${p.key}" id="tp${i}"> <b>${esc(p.name)}</b></label>
+      <div style="margin:6px 0 0 24px">${codes.map(c => `<label class="cbx"><input type="checkbox" class="tc" data-p="${p.key}" value="${c}"> ${esc(nm(c))}</label>`).join('')}
+      ${g.pdf ? `<label class="cbx"><input type="checkbox" class="tpdf" data-p="${p.key}"> May download PDF</label>` : '<div class="sub">PDF: you can’t grant it, you don’t have it yourself</div>'}</div></div>`; }).join('');
+  return `<div class="row between"><div><h2 class="h">Team at ${esc(cl.name)}</h2><div class="sub">You can invite colleagues from ${esc(cl.domains.join(', '))} and give them access you have yourself.</div></div></div>
+    <div class="grid2" style="margin-top:14px;align-items:start">
+      <div class="card"><h2>People</h2><div class="tbl-wrap"><table><thead><tr><th>Person</th><th>Function</th><th>Access</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+      <div class="card"><h2>Invite a colleague</h2>
+        <div class="two"><div><label for="ti-name">Name</label><input id="ti-name" type="text" placeholder="D. Example"></div><div><label for="ti-func">Function</label><select id="ti-func">${FUNCS.map(f => `<option>${f}</option>`).join('')}</select></div></div>
+        <label for="ti-mail">Email</label><input id="ti-mail" type="email" placeholder="d.example@${esc(cl.domains[0])}">
+        <label>Projects and companies</label>${form}
+        <div class="err" id="ti-err"></div>
+        <div class="actions"><button class="btn primary" onclick="clInvite()">Send invitation</button><span class="sub">Your ACP team is told about every invitation.</span></div></div></div>`;
+}
+function clAccount(u){
+  return `<h2 class="h">Account</h2><div class="grid2" style="margin-top:14px"><div class="card"><h2>Profile</h2><p style="margin:0"><b>${esc(u.name)}</b><br><span class="sub">${esc(u.email)} &middot; ${esc(u.func)}</span></p>
+    <div class="actions"><button class="btn" onclick="toast('Passkey setup opens in Microsoft’s sign-in page')">Add a passkey</button><button class="btn" onclick="toast('Password reset email sent')">Change password</button></div></div>
+    <div class="card"><h2>Signed-in sessions</h2><table><tbody><tr><td>Edge on Windows</td><td class="sub">this device, now</td></tr><tr><td>Safari on iPad</td><td class="sub">27.10.2026</td></tr></tbody></table>
+    <div class="actions"><button class="btn danger" onclick="note('Sign out everywhere',['Security stamp changed','Every other session ends on its next request']);toast('Signed out on all other devices')">Sign out everywhere else</button></div></div></div>`;
+}
+function clientPw(){
+  const m = $('#ci-mail').value.trim();
+  if (!clUser(m)){ $('#ci-err').textContent = 'This email hasn’t been invited. Try b.beispiel@muster-gmbh.example.'; return; }
+  if (!$('#ci-pw').value){ $('#ci-err').textContent = 'Enter your password.'; return; }
+  state.cl.email = m; state.cl.stage = 'otp';
+  note('Client sign-in', ['Entra External ID (the client tenant) checks the password; the portal never sees it', 'Conditional Access asks for the second factor: an email code']);
+  render();
+}
+const msLogo = '<span class="msgrid" aria-hidden="true"><i style="background:#f25022"></i><i style="background:#7fba00"></i><i style="background:#00a4ef"></i><i style="background:#ffb900"></i></span>';
+function clientMs(){
+  const m = $('#ci-mail').value.trim(), u = clUser(m);
+  if (!u){ $('#ci-err').textContent = 'Enter the email you were invited with first, so we know your company.'; return; }
+  const cl = CLIENTS.find(x => x.key === u.client);
+  if (!cl.federated){ $('#ci-err').textContent = `${cl.name} isn't connected for company sign-in yet. Sign in with your portal account below, or ask your ACP team to connect your company.`; return; }
+  state.cl.email = m; state.cl.stage = 'ms';
+  note('Company Microsoft sign-in', [`External ID recognises the domain of ${esc(cl.name)} and hands over to its own Microsoft Entra ID (federation, set up once for this client)`, 'The client company checks the password and its own second factor', 'When the person leaves the company, their account stops working here too']);
+  render();
+}
+function clientMsDone(){
+  state.cl.stage = 'app'; state.cl.view = 'home'; state.cl.pkey = null;
+  note('Signed in', ['External ID returns a token for the federated identity; the backend maps (issuer, object ID) to the invited portal user', 'Access still comes only from the grants in the portal, not from the company account', 'HttpOnly session cookie set']);
+  render();
+}
+function clientCode(){
+  if (!/^\d{6,8}$/.test($('#ci-code').value.trim())){ $('#ci-err').textContent = 'Enter the 6 digits from the email.'; return; }
+  state.cl.stage = 'app'; state.cl.view = 'home'; state.cl.pkey = null;
+  note('Signed in', ['Backend validates the ID token and maps (issuer, object ID) to the portal user', 'HttpOnly, SameSite=Strict session cookie: no token in the browser', '<code>GET /api/me</code> returns grants and navigation']);
+  render();
+}
+function clView(v){ state.cl.view = v; state.cl.menu = null; render(); window.scrollTo(0, 0); }
+function clSwitch(key){
+  const p = proj(key), g = clGrant(p);
+  state.cl.pkey = key; state.cl.view = 'home'; state.cl.menu = null; state.rep = { page:'overview', year:2, sel:null };
+  note('Switch project', ['Report component reset: embedded report and its token destroyed', 'Query cache keyed by project: nothing carried over', `<code>GET /api/projects/${key}/summary</code>: grant join, KPI snapshot for ${esc(names(codesOf(g, p)).join(', '))}`]);
+  render();
+}
+function clOpen(t){
+  const p = proj(state.cl.pkey), g = clGrant(p);
+  state.cl.view = 'report'; state.cl.rkey = t; resetRep(t);
+  note('Open ' + REPORTS[t].title, [`<code>POST /api/projects/${p.key}/reports/${t}/embed</code> with the anti-forgery header`, 'Server: active grant joined to the project; released version; Power BI IDs read from the database', `<code>GenerateToken</code> as the <b>${esc(clientOf(p).name)}</b> profile: one report, one model, role <code>Client</code>, username <code>${codesOf(g, p).join('|')}</code>, 30 minutes`, 'Renewal 5 minutes before expiry; audit row written']);
+  render(); window.scrollTo(0, 0);
+}
+function clInvite(){
+  const u = clUser(state.cl.email), cl = CLIENTS.find(x => x.key === u.client);
+  const name = $('#ti-name').value.trim(), mail = $('#ti-mail').value.trim(), func = $('#ti-func').value;
+  const picked = $$('.tp').filter(x => x.checked).map(x => x.dataset.p);
+  if (!name || !/^\S+@\S+\.\S+$/.test(mail)){ $('#ti-err').textContent = 'Enter a name and a valid email.'; return; }
+  if (!cl.domains.includes(mail.split('@')[1].toLowerCase())){ $('#ti-err').textContent = `Only addresses at ${cl.domains.join(', ')} can be invited. Ask your ACP team to approve another domain.`; return; }
+  if (!picked.length){ $('#ti-err').textContent = 'Choose at least one project.'; return; }
+  for (const k of picked){ if (!$$('.tc').some(x => x.dataset.p === k && x.checked)){ $('#ti-err').textContent = 'Tick at least one company for each chosen project.'; return; } }
+  CLIENT_USERS.push({ name, email:mail, client:cl.key, func, admin:false, state:'Invited' });
+  picked.forEach(k => { const p = proj(k); p.clients.push({ email:mail, codes:$$('.tc').filter(x => x.dataset.p === k && x.checked).map(x => x.value), pdf:$$('.tpdf').some(x => x.dataset.p === k && x.checked), until:p.end }); });
+  audit(u.name, 'Invitation sent', mail, picked.map(k => proj(k).id).join(', '));
+  note('Client admin invites', [`Checks: ${esc(u.name)} is admin of ${esc(cl.name)}; domain on the allow-list; every company and PDF right is within the admin's own grant`, 'Microsoft Graph creates the account in the External ID tenant; single-use invitation link, 7 days', 'First sign-in links the identity through the invitation, not by email alone', 'ACP project lead notified; audit row written']);
+  toast('Invitation sent to ' + mail); render();
+}
+function signOut(){ state.cl = { stage:'signin', email:'b.beispiel@muster-gmbh.example', view:'home', pkey:null, rkey:null, demo:'ready', menu:null }; render(); }
+
+/* ---------- ACP ---------- */
+function acpBar(){
+  const u = me(), isLead = PROJECTS.some(p => roleIn(p, u) === 'Lead'), a = state.acp;
+  const tabs = [['analytics','Analytics', true],['admin','Administration', !!u.admin],['health','Health', !!u.admin || isLead]].filter(t => t[2]);
+  if (!tabs.some(t => t[0] === a.tab)) a.tab = tabs[0][0];
+  return `<div class="app-bar"><span class="logo">ACP</span><span class="name">Databook</span><span class="ctx">ACP</span>
+    <div class="app-tabs">${tabs.map(([k, t]) => `<button class="${a.tab === k ? 'on' : ''}" onclick="acpTab('${k}')">${t}</button>`).join('')}</div><span class="spacer"></span>
+    <label for="as" style="margin:0">Signed in as</label><select id="as" class="mini" onchange="acpSwitch(this.value)">${DIRECTORY.map(d => `<option value="${d.email}" ${d.email === u.email ? 'selected' : ''}>${esc(d.name)}, ${d.rank}${d.admin ? ' (admin)' : ''}</option>`).join('')}</select><span class="avatar">${initials(u.name)}</span></div>`;
+}
+function viewAcp(){
+  const a = state.acp;
+  let body;
+  if (a.tab === 'admin') body = acpAdmin();
+  else if (a.tab === 'health') body = acpHealth();
+  else body = a.view === 'client' ? acpClient() : a.view === 'project' ? acpProject() : a.view === 'report' ? acpReport() : acpPortfolio();
+  return `<div class="app">${acpBar()}<div class="app-body">${body}</div></div>`;
+}
+function acpTab(k){ state.acp.tab = k; if (k === 'analytics') state.acp.view = 'portfolio'; render(); }
+function acpSwitch(email){
+  const a = state.acp; a.user = email; a.view = 'portfolio'; a.tab = 'analytics'; a.upload = null;
+  const u = me();
+  note('Signed in as ' + u.name, ['ACP Entra ID with single sign-on; no invitation', `Rank ${esc(u.rank)} from the ACP directory: informational`, u.admin ? 'Platform admin: administration and health, no client figures without break-glass' : u.portfolio ? 'Portfolio viewer for ' + esc(u.portfolio.map(k => CLIENTS.find(c => c.key === k).name).join(', ')) : 'Rights come only from project roles']);
+  render();
+}
+function ctxBar(c, p){ return `<div class="ctxbar"><span>Client</span><b>${esc(c.name)}</b>${p ? `<span class="sep">/</span><span>Project</span><b>${esc(p.name)}</b> <span style="opacity:.7">${p.id}</span>${p.restricted ? ' <span class="badge b-restricted">Restricted</span>' : ''}` : ''}</div>`; }
+function acpPortfolio(){
+  const u = me(), vis = visibleTo(u);
+  if (!vis.length) return u.admin
+    ? `<div class="empty-state"><div class="big">No client figures for platform admins</div><div>You run the portal from Administration and Health. If support needs a look at a project, use break-glass access there: time-limited, with a reason, logged.</div><div class="actions" style="justify-content:center"><button class="btn primary" onclick="acpTab('admin')">Open Administration</button></div></div>`
+    : `<div class="empty-state"><div class="big">No projects yet</div><div>When a project lead adds you to a team, the project shows here.</div></div>`;
+  const ages = vis.filter(p => p.live).map(p => daysOld(p.live.asOf)).sort((x, y) => x - y), med = ages.length ? ages[Math.floor(ages.length / 2)] : 0;
+  const act = new Set(Object.entries(ACTIVITY).filter(([k, v]) => v.views > 0 && vis.some(p => k.startsWith(p.key + '|'))).map(([k]) => k.split('|')[1])).size;
+  const k = [['Active projects', vis.filter(p => p.end >= TODAY).length, ''], ['Released this month', vis.filter(p => p.live && p.live.released.startsWith('2026-10')).length, 'October 2026'], ['Client users active', act, 'last 30 days'], ['Median data age', med + ' days', 'released Databooks'], ['Failed checks', vis.filter(p => p.checks.some(c => !c[1])).length, 'projects'], ['Ending soon', vis.filter(p => daysOld(p.end) > -60).length, 'within 60 days']];
+  const byClient = CLIENTS.map(c => ({ c, ps:vis.filter(p => p.client === c.key) })).filter(x => x.ps.length);
+  const rows = byClient.map(({ c, ps }) => { const rel = ps.filter(p => p.live).map(p => p.live.released).sort().pop(), asOf = ps.filter(p => p.live).map(p => p.live.asOf).sort().pop(), issues = ps.filter(p => p.checks.some(x => !x[1]) || (p.live && daysOld(p.live.asOf) >= settings.staleAmber)).length;
+    return `<tr class="click" onclick="acpClientOpen('${c.key}')"><td><b>${esc(c.name)}</b></td><td>${ps.length}</td><td>${ps.some(p => roleIn(p, u)) ? 'Team' : 'Portfolio'}${ps.some(p => roleIn(p, u)) && viaPortfolio(ps[0], u) ? ' + portfolio' : ''}</td><td>${rel ? de(rel) : '-'}</td><td>${asOf ? freshBadge(asOf) : '-'}</td><td>${issues ? `<span class="badge b-warn">${issues}</span>` : '<span class="badge b-ok">none</span>'}</td></tr>`; }).join('');
+  return `<div class="row between"><div><h2 class="h">Portfolio</h2><div class="sub">${esc(u.name)} &middot; totals include only projects you may see${u.portfolio ? '; restricted projects of other teams are left out entirely' : ''}.</div></div></div>
+    <div class="kpis" style="margin-top:14px">${k.map(([l, v, h]) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="h">${h}</div></div>`).join('')}</div>
+    <h3>Clients</h3><div class="tbl-wrap"><table><thead><tr><th>Client</th><th>Projects</th><th>Your access</th><th>Last release</th><th>Newest data</th><th>Issues</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function acpClientOpen(ck){
+  const a = state.acp, u = me(); a.view = 'client'; a.ckey = ck;
+  note('Open client', [`<code>GET /api/acp/clients/${ck}</code>`, 'Projects listed only through your grants or portfolio assignment; restricted projects only for their team', 'Every request names the client; no "current client" is kept in the session']);
+  render(); window.scrollTo(0, 0);
+}
+function acpClient(){
+  const u = me(), c = CLIENTS.find(x => x.key === state.acp.ckey), ps = visibleTo(u).filter(p => p.client === c.key);
+  const rows = ps.map(p => { const ks = p.live ? kpiSet(p.companies) : null, act = Object.entries(ACTIVITY).filter(([k, v]) => k.startsWith(p.key + '|') && v.views > 0).length;
+    return `<tr class="click" onclick="acpProjectOpen('${p.key}')"><td><b>${esc(p.name)}</b><div class="sub">${p.id}${p.restricted ? ' &middot; restricted' : ''}</div></td><td>${roleIn(p, u) || 'Portfolio'}</td><td><span class="badge ${p.live && p.draft ? 'b-draft' : p.live ? 'b-live' : 'b-draft'}">${p.live && p.draft ? 'Live, new draft' : p.live ? 'Live' : 'Draft'}</span></td>
+      <td>${p.live ? freshBadge(p.live.asOf) : '-'}</td><td>${(p.live || p.draft).template < settings.minTemplate ? `<span class="badge b-bad">${(p.live || p.draft).template}</span>` : (p.live || p.draft).template}</td>
+      <td>${p.checks.every(x => x[1]) ? '<span class="badge b-ok">pass</span>' : '<span class="badge b-bad">fail</span>'}</td><td class="num">${ks ? ks[0].v : '-'}</td><td class="num">${ks ? ks[1].v : '-'}</td><td class="num">${ks ? ks[2].v : '-'}</td><td class="num">${act}</td></tr>`; }).join('');
+  return `<div class="crumbs"><button onclick="acpTab('analytics')">Portfolio</button> &rsaquo; ${esc(c.name)}</div>${ctxBar(c)}
+    <div class="tbl-wrap"><table><thead><tr><th>Project</th><th>Your access</th><th>Status</th><th>Data as of</th><th>Template</th><th>Checks</th><th class="num">Revenue FY25</th><th class="num">EBITDA FY25</th><th class="num">NWC months</th><th class="num">Active clients</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="foot">Figures per project from its KPI snapshot, all companies. Never summed across projects or clients.</p>`;
+}
+function acpProjectOpen(pk){ const a = state.acp; a.view = 'project'; a.pkey = pk; a.ckey = proj(pk).client; a.upload = null; note('Open project', [`<code>GET /api/acp/projects/${pk}</code>`, 'Grant join; portfolio viewers read only; restricted projects only for team members']); render(); window.scrollTo(0, 0); }
+function acpProject(){
+  const u = me(), p = proj(state.acp.pkey), c = clientOf(p), role = roleIn(p, u), lead = role === 'Lead', member = role === 'Lead' || role === 'Member';
+  const team = p.team.map(t => { const d = acpUser(t.email); return `<li><span class="avatar sm">${initials(d.name)}</span><div class="who"><div><b>${esc(d.name)}</b> <span class="badge ${t.role === 'Lead' ? 'b-lead' : 'b-role'}">${t.role}</span></div><div class="m">${d.rank} &middot; ${esc(d.email)}</div></div>${lead && t.email !== u.email ? `<button class="btn small danger" onclick="removePerson('${t.email}')" aria-label="Remove ${esc(d.name)}">Remove</button>` : ''}</li>`; }).join('');
+  const cls = p.clients.map(g => { const x = clUser(g.email); return `<li><span class="avatar sm c">${initials(x.name)}</span><div class="who"><div><b>${esc(x.name)}</b> <span class="badge b-role">${esc(x.func)}</span>${x.admin ? ' <span class="badge b-lead">Client admin</span>' : ''}${x.state === 'Invited' ? ' <span class="badge b-warn">Invited</span>' : ''}${g.pdf ? ' <span class="badge b-info">PDF</span>' : ''}</div><div class="m">${esc(x.email)} &middot; sees ${esc(names(codesOf(g, p)).join(', '))} &middot; until ${de(g.until)}</div></div>${lead ? `<button class="btn small danger" onclick="removePerson('${g.email}')" aria-label="Remove ${esc(x.name)}">Remove</button>` : ''}</li>`; }).join('') || '<li class="empty">No client contacts yet.</li>';
+  const up = state.acp.upload;
+  let file;
+  if (up){
+    file = `<div class="sub">Checking <b>${esc(up.file)}</b></div><ul class="checks">${up.checks.map(k => `<li><span class="ic ${k.s}">${k.s === 'ok' ? '&#10003;' : k.s === 'no' ? '!' : ''}</span><span>${esc(k.t)}</span></li>`).join('')}</ul>
+      ${up.done && up.ok ? '<div class="msg good">All checks passed. Imported as a draft; clients see nothing yet.</div>' : ''}
+      ${up.done && !up.ok ? `<div class="msg bad">${esc(up.msg)}</div><div class="actions"><button class="btn" onclick="state.acp.upload=null;render()">Try another file</button></div>` : ''}`;
+  } else if (member){
+    file = `<div class="drop" id="drop"><b>Drop the refreshed .pbix here</b><div class="sub">Template ${settings.minTemplate} or newer, refreshed in Power BI Desktop as today</div>
+      <div class="actions" style="justify-content:center"><button class="btn small" onclick="upload('Databook_${p.id}_v${(p.live ? p.live.v : 0) + 1}.pbix', true)">Simulate a good file</button><button class="btn small" onclick="upload('Databook_${p.id}_old.pbix', false)">Simulate an old template</button></div></div>`;
+  } else file = `<div class="msg info">${role ? 'As Viewer you can open the reports, not upload.' : breakGlass(p) ? 'Break-glass access: read only, ends automatically.' : 'Portfolio access: read only.'}</div>`;
+  const cur = `${p.live ? `<div class="versions">Live: <b>v${p.live.v}</b> ${esc(p.live.file)}, released ${de(p.live.released)} by ${esc(p.live.by)}</div>` : ''}${p.draft ? `<div class="versions">Draft: <b>v${p.draft.v}</b> ${esc(p.draft.file)}, uploaded by ${esc(acpUser(p.draft.uploadedBy).name)}</div>` : ''}${p.versions.length ? `<div class="versions">Earlier: ${p.versions.map((v, i) => `v${v.v} (${de(v.released)}) ${lead ? `<button class="btn small ghost" onclick="rollback(${i})">Roll back</button>` : ''}`).join(' ')}</div>` : ''}`;
+  const act = p.clients.map(g => { const x = clUser(g.email), ac = ACTIVITY[p.key + '|' + g.email] || { last:'not yet', views:0, top:'-', weeks:[0,0,0,0,0,0,0,0] }; return `<tr><td><b>${esc(x.name)}</b></td><td>${ac.last}</td><td class="num">${ac.views}</td><td>${esc(ac.top)}</td><td>${spark(ac.weeks)}</td></tr>`; }).join('');
+  const reps = p.reports.map(t => `<div class="rcard"><span class="th">${thumb(t)}</span><div class="bd"><b>${esc(REPORTS[t].title)}</b><span class="sub">${REPORTS[t].pages.length} pages${REPORTS[t].pages.some(x => ACP_ONLY.includes(x)) ? ', incl. ACP-only checks' : ''}</span><div class="row" style="margin-top:8px"><button class="btn small primary" onclick="acpOpenReport('${t}')">Open</button></div></div></div>`).join('');
+  return `<div class="crumbs"><button onclick="acpTab('analytics')">Portfolio</button> &rsaquo; <button onclick="acpClientOpen('${c.key}')">${esc(c.name)}</button> &rsaquo; ${esc(p.name)}</div>${ctxBar(c, p)}
+    ${role ? '' : `<div class="msg info" style="margin:0 0 12px">${breakGlass(p) ? 'Break-glass access until it expires. Everything you open is logged and Patrik is notified.' : 'You see this project through your portfolio assignment: read only.'}</div>`}
+    ${p.live ? kpiCards(p.companies) : ''}
+    <div class="section-h"><h2>Reports</h2><span class="sub">ACP view: all companies; drafts only for the team</span></div><div class="rcards">${reps}</div>
+    <div class="grid2" style="margin-top:16px;align-items:start">
+      <div class="card"><h2>People</h2><h3 style="margin-top:0">ACP team</h3><ul class="people">${team}</ul><h3>Client contacts</h3><ul class="people">${cls}</ul>${lead ? '<button class="btn" onclick="addPersonForm(\'acp\')">Add person</button>' : ''}</div>
+      <div class="stack">
+        <div class="card"><h2>Databook file</h2>${file}${cur}${member ? '<div class="actions"><button class="btn primary" onclick="releaseForm()">Release to clients</button></div>' : ''}</div>
+        <div class="card"><h2>Freshness and quality</h2><table><tbody>
+          <tr><td>Data as of</td><td>${p.live ? freshBadge(p.live.asOf) : 'not released'}</td></tr>
+          <tr><td>Template</td><td>${(p.live || p.draft).template}${(p.live || p.draft).template < settings.minTemplate ? ' <span class="badge b-bad">below minimum</span>' : ''}</td></tr>
+          ${p.checks.map(([n, s, t]) => `<tr><td>${n}</td><td><span class="badge ${s ? 'b-ok' : 'b-bad'}">${s ? 'OK' : 'Check'}</span> <span class="sub">${t}</span></td></tr>`).join('')}</tbody></table></div>
+        <div class="card"><h2>Client activity</h2><div class="tbl-wrap"><table><thead><tr><th>Client</th><th>Last opened</th><th class="num">Views</th><th>Most read</th><th>8 weeks</th></tr></thead><tbody>${act || '<tr><td colspan="5" class="empty">No client contacts yet.</td></tr>'}</tbody></table></div><div class="sub" style="margin-top:6px">From the report's page events; clients are told in the privacy notice.</div></div>
+      </div></div>`;
+}
+function acpOpenReport(t){
+  const a = state.acp, p = proj(a.pkey), u = me();
+  if (!p.live && !p.draft){ toast('Drop a Databook file first.'); return; }
+  if (!p.live && !roleIn(p, u)){ toast('Drafts are only for the project team.'); return; }
+  a.view = 'report'; a.rkey = t; a.viewAs = 'ACP'; resetRep(t);
+  note('Open ' + REPORTS[t].title + ' as ACP', [`<code>POST /api/projects/${p.key}/reports/${t}/embed${p.draft && roleIn(p, u) ? '?draft=true' : ''}</code>`, `<code>GenerateToken</code> as the ${esc(clientOf(p).name)} profile, role <code>ACP</code>: all companies, ACP-only pages`, 'Audit: who, which project, which version']);
+  render(); window.scrollTo(0, 0);
+}
+function acpReport(){
+  const a = state.acp, p = proj(a.pkey), c = clientOf(p), u = me(), t = a.rkey, g = p.clients.find(x => x.email === a.viewAs);
+  const canViewAs = roleIn(p, u) === 'Lead' || roleIn(p, u) === 'Member';
+  const opts = ['<option value="ACP">ACP view: all companies</option>'].concat(canViewAs ? p.clients.map(x => `<option value="${esc(x.email)}" ${a.viewAs === x.email ? 'selected' : ''}>As ${esc(clUser(x.email).name)}: ${esc(names(codesOf(x, p)).join(', '))}</option>`) : []).join('');
+  const ver = p.draft && roleIn(p, u) ? p.draft : p.live;
+  return `<div class="crumbs"><button onclick="acpTab('analytics')">Portfolio</button> &rsaquo; <button onclick="acpClientOpen('${c.key}')">${esc(c.name)}</button> &rsaquo; <button onclick="acpProjectOpen('${p.key}')">${esc(p.name)}</button> &rsaquo; ${esc(REPORTS[t].title)}</div>${ctxBar(c, p)}
+    <div class="rv-head"><div><h2 class="h">${esc(REPORTS[t].title)}</h2><div class="sub">Version ${ver.v}${ver === p.draft ? ' &middot; draft, clients can’t see it' : ' &middot; live'} &middot; data as of ${de(ver.asOf)}</div></div>
+    <div><label for="va" style="margin:0 0 4px">View as</label><select id="va" class="mini" onchange="viewAs(this.value)">${opts}</select></div></div>
+    ${g ? `<div class="msg info" style="margin:0 0 10px">You see exactly what ${esc(clUser(g.email).name)} sees: ${esc(names(codesOf(g, p)).join(', '))}, client pages only.</div>` : ''}
+    ${reportFrame(g ? { mode:'client', type:t, codes:codesOf(g, p), pdf:g.pdf } : { mode:'acp', type:t, codes:p.companies, checks:p.checks })}`;
+}
+function viewAs(v){
+  const a = state.acp, p = proj(a.pkey), g = p.clients.find(x => x.email === v);
+  a.viewAs = v; state.rep.sel = null;
+  note('View as ' + (g ? clUser(g.email).name : 'ACP'), [g ? `<code>GenerateToken</code> role <code>Client</code>, username <code>${codesOf(g, p).join('|')}</code>: the same RLS the client gets` : 'Role <code>ACP</code>, no filter', 'Audit marks the token as a preview']);
+  render();
+}
+
+/* add person (ACP lead) */
+function addPersonForm(type){ if (type) state.acp.addType = type; state.acp.pick = null; drawAdd(); }
+function picksHtml(q){
+  const p = proj(state.acp.pkey), ql = q.trim().toLowerCase();
+  return DIRECTORY.filter(d => !d.admin && !p.team.some(t => t.email === d.email) && (!ql || d.name.toLowerCase().includes(ql) || d.rank.toLowerCase().includes(ql)))
+    .map(d => `<button class="pick ${state.acp.pick === d.email ? 'on' : ''}" onclick="pick('${d.email}')"><span class="avatar sm">${initials(d.name)}</span><span><b>${esc(d.name)}</b> <span class="sub">${d.rank}</span></span></button>`).join('') || '<div class="empty">Everyone found is already on the team.</div>';
+}
+const rightsChips = role => `<div class="rights">${ALL_RIGHTS.map(r => `<span class="right ${ROLE_RIGHTS[role].includes(r) ? 'yes' : 'no'}">${ROLE_RIGHTS[role].includes(r) ? '&#10003;' : '&ndash;'} ${r}</span>`).join('')}</div>`;
+function drawAdd(){
+  const p = proj(state.acp.pkey), c = clientOf(p), t = state.acp.addType;
+  const tabs = `<div class="seg wide"><button class="${t === 'acp' ? 'on' : ''}" onclick="addPersonForm('acp')">ACP internal</button><button class="${t === 'client' ? 'on' : ''}" onclick="addPersonForm('client')">Client contact</button></div>`;
+  const body = t === 'acp'
+    ? `<label for="ap-q">Find a colleague in the ACP directory</label><input id="ap-q" type="text" placeholder="Name or rank" autocomplete="off" oninput="$('#ap-picks').innerHTML=picksHtml(this.value)"><div id="ap-picks" class="picks">${picksHtml('')}</div><div id="ap-sel"></div>`
+    : `<div class="two"><div><label for="ap-name">Name</label><input id="ap-name" type="text" placeholder="D. Example"></div><div><label for="ap-func">Function</label><select id="ap-func">${FUNCS.map(f => `<option>${f}</option>`).join('')}</select></div></div>
+      <label for="ap-mail">Email</label><input id="ap-mail" type="email" placeholder="d.example@${esc(c.domains[0])}">
+      <label>Companies this person may see</label>${p.companies.map(code => `<label class="cbx"><input type="checkbox" class="apc" value="${code}" onchange="apSees()"> ${esc(nm(code))}</label>`).join('')}
+      <div class="two"><div><label for="ap-end">Access until</label><input id="ap-end" type="date" value="${p.end}"></div><div><label>Rights</label><label class="cbx"><input type="checkbox" id="ap-pdf" ${settings.clientPdf ? 'checked' : ''}> May download PDF</label><label class="cbx"><input type="checkbox" id="ap-adm"> Client admin</label></div></div>
+      <div class="msg info" id="ap-sees">Will see: nothing yet</div>`;
+  modal(`<h2>Add person</h2><div class="sub">${esc(p.name)} &middot; ${esc(c.name)}</div>${tabs}${body}<div class="err" id="ap-err"></div>
+    <div class="actions"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="addPerson()">${t === 'acp' ? 'Add to team' : 'Add and invite'}</button></div>`);
+}
+function pick(email){
+  const d = acpUser(email), def = RANK_DEFAULT[d.rank]; state.acp.pick = email;
+  $('#ap-picks').innerHTML = picksHtml($('#ap-q').value);
+  $('#ap-sel').innerHTML = `<div class="selbox"><div class="row"><span class="avatar">${initials(d.name)}</span><div><b>${esc(d.name)}</b><div class="sub">${esc(d.email)} &middot; ${d.rank} (from the ACP directory)</div></div></div>
+    <label for="ap-role">Project role</label><select id="ap-role" onchange="$('#ap-rights').innerHTML=rightsChips(this.value)">${['Lead','Member','Viewer'].map(r => `<option ${r === def ? 'selected' : ''}>${r}</option>`).join('')}</select>
+    <div class="sub" style="margin-top:4px">Proposed from the rank (${d.rank} &rarr; ${def}); the lead decides.</div><div id="ap-rights">${rightsChips(def)}</div></div>`;
+}
+function apSees(){ const s = $$('.apc').filter(x => x.checked).map(x => nm(x.value)); $('#ap-sees').textContent = 'Will see: ' + (s.length ? s.join(', ') : 'nothing yet'); }
+function addPerson(){
+  const p = proj(state.acp.pkey), c = clientOf(p), u = me();
+  if (state.acp.addType === 'acp'){
+    if (!state.acp.pick){ $('#ap-err').textContent = 'Pick a colleague from the list.'; return; }
+    const d = acpUser(state.acp.pick), role = $('#ap-role').value;
+    p.team.push({ email:d.email, role }); closeModal(); audit(u.name, 'Grant added', p.id + ' ' + d.name, 'Role ' + role);
+    note('Add ACP colleague', [`Microsoft Graph user search found ${esc(d.name)} (${d.rank})`, `Grant saved: role <b>${role}</b> on ${p.id}; the rank only proposed it`, 'No invitation: ACP account with single sign-on', 'Audit row written']);
+    toast(d.name + ' added as ' + role); render(); return;
+  }
+  const name = $('#ap-name').value.trim(), mail = $('#ap-mail').value.trim(), func = $('#ap-func').value, codes = $$('.apc').filter(x => x.checked).map(x => x.value);
+  if (!name || !/^\S+@\S+\.\S+$/.test(mail)){ $('#ap-err').textContent = 'Enter a name and a valid email.'; return; }
+  if (/@acp\.example$/i.test(mail)){ $('#ap-err').textContent = 'This is an ACP address. Add colleagues under ACP internal.'; return; }
+  if (!c.domains.includes(mail.split('@')[1].toLowerCase())){ $('#ap-err').textContent = `${mail.split('@')[1]} isn't an approved domain for ${c.name}. Sejal can add it in Administration.`; return; }
+  if (!codes.length){ $('#ap-err').textContent = 'Tick at least one company.'; return; }
+  if (!clUser(mail)) CLIENT_USERS.push({ name, email:mail, client:c.key, func, admin:$('#ap-adm').checked, state:'Invited' });
+  p.clients.push({ email:mail, codes, pdf:$('#ap-pdf').checked, until:$('#ap-end').value });
+  closeModal(); audit(u.name, 'Invitation sent', mail, p.id + ': ' + codes.join('|'));
+  note('Invite client contact', ['Grant saved: companies ' + esc(names(codes).join(', ')), 'Microsoft Graph creates the account in the External ID tenant; invitation email through Communication Services', 'Second factor: email code, by Conditional Access in the client tenant', '<b>Nothing changes in Power BI</b>: nobody is added to the workspace']);
+  toast('Invitation sent to ' + mail); render();
+}
+function removePerson(email){
+  const p = proj(state.acp.pkey), u = me();
+  p.team = p.team.filter(t => t.email !== email); p.clients = p.clients.filter(g => g.email !== email);
+  audit(u.name, 'Grant revoked', p.id + ' ' + email, ''); note('Remove access', ['Grant revoked; the person’s security stamp changes', 'Next API call: 404 for this project; token renewal refused', 'An open report disappears at the latest when its 30-minute token expires']);
+  toast('Access removed'); render();
+}
+
+/* upload, release, roll back */
+function upload(file, good){
+  const p = proj(state.acp.pkey), u = me(), c = clientOf(p);
+  const list = ['File is a Power BI .pbix', `Imported as a draft into the ${c.name} workspace, as its profile`, `Template version ${settings.minTemplate} or newer (read through XMLA)`, 'Roles Client and ACP are in the model', 'Company codes match the project', 'Every client table is filtered by the Client role', 'KPI snapshot taken'];
+  state.acp.upload = { file, checks:list.map(t => ({ t, s:'todo' })), done:false, ok:false };
+  render();
+  let i = 0;
+  const step = () => {
+    const up = state.acp.upload; if (!up || state.acp.pkey !== p.key) return;
+    if (i < list.length){
+      up.checks[i].s = 'wait'; render();
+      setTimeout(() => {
+        if (state.acp.upload !== up) return;
+        if (!good && i === 2){ up.checks[i].s = 'no'; up.checks[i].t = 'Template version 1.4 found'; up.done = true;
+          up.msg = `This file is built on Databook template 1.4. Rebuild it on template ${settings.minTemplate} or newer (it adds the Client and ACP roles and company codes), then drop it again.`;
+          HEALTH.imports.unshift({ when:'29.10.2026', project:p.id, who:u.name, file, result:'Rejected: template 1.4' }); audit(u.name, 'Upload rejected', p.id, 'Template 1.4');
+          note('Upload rejected', ['XMLA (TOM) read the model under the client profile: template 1.4', 'Draft deleted; file removed from storage after 7 days', 'Plain message to the uploader; listed in Health']);
+          render(); return; }
+        up.checks[i].s = 'ok'; i++; render(); step();
+      }, 480);
+    } else {
+      up.done = true; up.ok = true;
+      p.draft = { v:(p.live ? p.live.v : 0) + 1, file, template:settings.minTemplate, asOf:'2026-09-30', uploadedBy:u.email, uploaded:TODAY };
+      HEALTH.imports.unshift({ when:'29.10.2026', project:p.id, who:u.name, file, result:'Passed' }); audit(u.name, 'Uploaded', p.id, file);
+      note('Upload accepted', ['Browser uploaded straight to Blob storage with a 15-minute write-only link', `Functions job: <code>POST /groups/{ws}/imports</code> with header <code>X-PowerBI-Profile-Id</code> of ${esc(c.name)}`, 'Checks through the XMLA endpoint with TOM: Execute Queries is not used, it does not support service principals on RLS models', 'KPI snapshot stored per company scope; clients see nothing yet']);
+      render();
+    }
+  };
+  step();
+}
+function releaseForm(){
+  const p = proj(state.acp.pkey), u = me(), role = roleIn(p, u);
+  if (!p.draft){ toast(p.live ? 'Nothing new to release. Drop a new file first.' : 'Drop a Databook file first.'); return; }
+  const others = p.team.filter(t => t.role === 'Lead' && t.email !== p.draft.uploadedBy && t.email !== u.email).map(t => acpUser(t.email));
+  if (role !== 'Lead' || p.draft.uploadedBy === u.email){
+    const why = role !== 'Lead' ? `As ${role} you can't release.` : 'You uploaded this draft, so another lead releases it.';
+    modal(`<h2>Ask for release</h2><p>${why} ${others.length ? `<b>${esc(others[0].name)}</b> (Lead) can release it.` : 'There is no other lead on this team yet.'}</p>
+      <p class="sub">Four-eyes rule: the person who uploads never releases. Clients keep seeing the current version meanwhile.</p>
+      <div class="actions"><button class="btn" onclick="closeModal()">Cancel</button>${others.length ? `<button class="btn primary" onclick="askRelease('${others[0].email}')">Ask ${esc(others[0].name)}</button>` : ''}</div>`);
+    return;
+  }
+  modal(`<h2>Release to clients?</h2><p><b>Version ${p.draft.v}</b>, uploaded by ${esc(acpUser(p.draft.uploadedBy).name)}, becomes live for ${p.clients.length} client contact(s). The current version stays available for roll-back.</p>
+    <label for="rl-note">Release note for clients</label><input id="rl-note" type="text" value="September closing added.">
+    <div class="actions"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="release()">Release</button></div>`);
+}
+function askRelease(email){ const d = acpUser(email); closeModal(); note('Release requested', [`Email to ${esc(d.name)} with a link to the draft`, 'Clients keep the current version']); toast('Release request sent to ' + d.name); }
+function release(){
+  const p = proj(state.acp.pkey), u = me(), nt = $('#rl-note').value.trim();
+  if (p.live) p.versions.unshift({ v:p.live.v, file:p.live.file, released:p.live.released });
+  p.live = { v:p.draft.v, file:p.draft.file, template:p.draft.template, asOf:p.draft.asOf, released:TODAY, by:u.name }; p.draft = null; if (nt) p.note = nt; state.acp.upload = null;
+  closeModal(); audit(u.name, 'Released', p.id + ' v' + p.live.v, 'Four-eyes satisfied');
+  note('Release', ['Database: the live version now points to the new report and model', `Previous version kept for roll-back (${settings.keep} days)`, `Email to ${p.clients.length} client contact(s) with the release note`, 'Model pre-warmed so the first client view is fast']);
+  toast('Released. Clients notified.'); render();
+}
+function rollback(i){
+  const p = proj(state.acp.pkey), u = me(), v = p.versions.splice(i, 1)[0];
+  if (p.live) p.versions.unshift({ v:p.live.v, file:p.live.file, released:p.live.released });
+  p.live = Object.assign({}, p.live, { v:v.v, file:v.file, released:v.released });
+  audit(u.name, 'Rolled back', p.id, 'to v' + v.v); note('Roll back', ['Database: live pointer switched back', 'Takes effect on the next report pass']); toast('Rolled back to version ' + v.v); render();
+}
+
+/* administration and health */
+function acpAdmin(){
+  const t = state.acp.admTab;
+  const tabs = [['users','Users'],['access','Roles and access'],['projects','Projects'],['templates','Templates and settings'],['audit','Audit log']];
+  let body = '';
+  if (t === 'users'){
+    body = `<h3 style="margin-top:0">ACP staff</h3><div class="tbl-wrap"><table><thead><tr><th>Person</th><th>Rank</th><th>Global role</th><th>Project roles</th></tr></thead><tbody>${DIRECTORY.map(d => `<tr><td><b>${esc(d.name)}</b><div class="sub">${esc(d.email)}</div></td><td>${d.rank}</td><td>${d.admin ? '<span class="badge b-lead">Platform admin</span>' : d.portfolio ? `Portfolio: ${esc(d.portfolio.map(k => CLIENTS.find(c => c.key === k).name).join(', '))}` : '-'}</td><td>${PROJECTS.filter(p => roleIn(p, d)).map(p => `${p.id} ${roleIn(p, d)}`).join(', ') || '-'}</td></tr>`).join('')}</tbody></table></div>
+      <h3>Client users</h3><div class="tbl-wrap"><table><thead><tr><th>Person</th><th>Client</th><th>Function</th><th>Projects</th><th>Status</th></tr></thead><tbody>${CLIENT_USERS.map(x => `<tr><td><b>${esc(x.name)}</b><div class="sub">${esc(x.email)}</div></td><td>${esc(CLIENTS.find(c => c.key === x.client).name)}${x.admin ? ' <span class="badge b-lead">Admin</span>' : ''}</td><td>${esc(x.func)}</td><td>${PROJECTS.filter(p => p.clients.some(g => g.email === x.email)).map(p => p.id).join(', ')}</td><td><span class="badge ${x.state === 'Active' ? 'b-live' : 'b-warn'}">${x.state}</span></td></tr>`).join('')}</tbody></table></div>`;
+  } else if (t === 'access'){
+    body = `<div class="grid2" style="align-items:start"><div><h3 style="margin-top:0">Default project role by rank</h3><div class="sub">Only a proposal when someone is added; the project lead decides.</div>
+      <table style="margin-top:6px"><tbody>${RANKS.map(r => `<tr><td>${r}</td><td><select class="mini" aria-label="Default role for ${r}" onchange="RANK_DEFAULT['${r}']=this.value;note('Default changed',['${r} now proposes '+this.value,'Existing grants unchanged']);toast('Saved')">${['Lead','Member','Viewer'].map(x => `<option ${RANK_DEFAULT[r] === x ? 'selected' : ''}>${x}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table></div>
+      <div><h3 style="margin-top:0">What each project role may do</h3><table><thead><tr><th>Right</th><th>Lead</th><th>Member</th><th>Viewer</th></tr></thead><tbody>${ALL_RIGHTS.map(r => `<tr><td>${r}</td>${['Lead','Member','Viewer'].map(x => `<td>${ROLE_RIGHTS[x].includes(r) ? '&#10003;' : '&ndash;'}</td>`).join('')}</tr>`).join('')}</tbody></table>
+      <h3>Portfolio viewers</h3><table><tbody>${DIRECTORY.filter(d => d.portfolio).map(d => `<tr><td>${esc(d.name)}</td><td>${esc(d.portfolio.map(k => CLIENTS.find(c => c.key === k).name).join(', '))}</td></tr>`).join('')}</tbody></table>
+      <div class="sub" style="margin-top:6px">Portfolio viewers never see restricted projects unless they are on that team.</div></div></div>`;
+  } else if (t === 'projects'){
+    body = `<div class="sub">Metadata only. Client figures need break-glass access: up to 4 hours, with a reason, logged, Patrik notified.</div><div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>Project</th><th>Client</th><th>Lead</th><th>Status</th><th>Template</th><th></th></tr></thead><tbody>${PROJECTS.map(p => `<tr><td><b>${esc(p.name)}</b><div class="sub">${p.id}${p.restricted ? ' &middot; restricted' : ''}</div></td><td>${esc(clientOf(p).name)}</td><td>${esc(acpUser(p.team.find(x => x.role === 'Lead').email).name)}</td><td>${p.live ? 'Live' : 'Draft'}</td><td>${(p.live || p.draft).template}</td><td>${breakGlass(p) ? `<button class="btn small" onclick="acpTab('analytics');acpProjectOpen('${p.key}')">Open (break-glass)</button>` : `<button class="btn small" onclick="breakGlassForm('${p.key}')">Break-glass access</button>`}</td></tr>`).join('')}</tbody></table></div>`;
+  } else if (t === 'templates'){
+    body = `<div class="grid2"><div class="card"><h2>Template</h2><p>Current Databook template: <b>1.6</b>. Minimum accepted on upload:</p><select class="mini" aria-label="Minimum template" onchange="settings.minTemplate=this.value;toast('Saved');render()">${['1.5','1.6'].map(v => `<option ${settings.minTemplate === v ? 'selected' : ''}>${v}</option>`).join('')}</select>
+      <div class="actions"><button class="btn" onclick="note('Publish template 1.7',['Stored for consultants to download','Raise the minimum later, so running projects are not blocked']);toast('Template 1.7 published')">Publish a new template version</button></div></div>
+      <div class="card"><h2>Settings</h2><label class="cbx"><input type="checkbox" ${settings.clientPdf ? 'checked' : ''} onchange="settings.clientPdf=this.checked;toast('Saved')"> New client contacts may download PDF</label>
+      <label for="st-keep">Keep files and workspace items after the project ends</label><select id="st-keep" class="mini" onchange="settings.keep=this.value;toast('Saved')">${['30','90','180'].map(v => `<option ${settings.keep === v ? 'selected' : ''}>${v} days</option>`).join('')}</select>
+      <label>Data age warnings</label><div class="sub">Amber after ${settings.staleAmber} days, red after ${settings.staleRed} days</div>
+      <label>Client email domains and company sign-in</label><table><tbody>${CLIENTS.map(c => `<tr><td>${esc(c.name)}</td><td>${esc(c.domains.join(', '))}</td><td>${c.federated ? '<span class="badge b-ok">Company Microsoft sign-in</span>' : `<button class="btn small" onclick="CLIENTS.find(x=>x.key==='${c.key}').federated=true;note('Connect company sign-in',['Federation with the client’s Microsoft Entra ID added in the External ID tenant, set up once with their IT','Existing portal accounts keep working']);toast('Connected');render()">Connect company sign-in</button>`}</td></tr>`).join('')}</tbody></table></div></div>`;
+  } else {
+    body = `<div class="row between"><div class="sub">Append-only. Tokens and financial figures are never logged.</div><button class="btn small" onclick="toast('Audit exported as CSV')">Export CSV</button></div>
+      <div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>When</th><th>Who</th><th>What</th><th>Target</th><th>Detail</th></tr></thead><tbody>${AUDIT.map(r => `<tr>${r.map(x => `<td>${esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }
+  return `<div class="row between"><h2 class="h">Administration</h2><div class="seg">${tabs.map(([k, l]) => `<button class="${t === k ? 'on' : ''}" onclick="state.acp.admTab='${k}';render()">${l}</button>`).join('')}</div></div><div style="margin-top:14px">${body}</div>`;
+}
+function breakGlassForm(pk){
+  const p = proj(pk);
+  modal(`<h2>Break-glass access</h2><p>${esc(p.name)} (${esc(clientOf(p).name)}). Access lasts 4 hours, everything is logged, and Patrik is notified.</p>
+    <label for="bg-r">Reason</label><input id="bg-r" type="text" placeholder="Support ticket 2026-118: client reports empty page">
+    <div class="err" id="bg-err"></div><div class="actions"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="breakGlassGo('${pk}')">Grant for 4 hours</button></div>`);
+}
+function breakGlassGo(pk){
+  const r = $('#bg-r').value.trim(); if (r.length < 10){ $('#bg-err').textContent = 'Give a reason others can follow (at least 10 characters).'; return; }
+  state.acp.breakGlass[pk] = true; closeModal(); audit(me().name, 'Break-glass granted', proj(pk).id, r);
+  note('Break-glass', ['Row in <code>BreakGlassGrant</code>, valid 4 hours; SQL row-level security now lets this user read the project', 'Notification to Patrik', 'Every view during the window is logged']);
+  toast('Access granted for 4 hours'); render();
+}
+function acpHealth(){
+  const u = me(), mine = p => u.admin || roleIn(p, u) === 'Lead', ids = PROJECTS.filter(mine).map(p => p.id);
+  const imp = HEALTH.imports.filter(x => ids.includes(x.project)), emb = HEALTH.embeds.filter(x => ids.includes(x.project));
+  return `<div class="row between"><h2 class="h">Health</h2><span class="sub">${u.admin ? 'All projects' : 'Projects you lead'}</span></div>
+    <div class="kpis" style="margin-top:14px"><div class="kpi"><div class="l">Imports rejected, 7 days</div><div class="v">${imp.filter(x => x.result !== 'Passed').length}</div><div class="h">uploader was told what to fix</div></div>
+      <div class="kpi"><div class="l">Report load errors, 7 days</div><div class="v">${emb.reduce((s, x) => s + x.count, 0)}</div><div class="h">from browsers</div></div>
+      <div class="kpi"><div class="l">Token failures, 7 days</div><div class="v">0</div><div class="h">GenerateToken errors</div></div>
+      ${u.admin ? '<div class="kpi"><div class="l">Capacity peak this week</div><div class="v">38 %</div><div class="h">F2; alert above 80 %</div></div>' : ''}</div>
+    <h3>Imports and checks</h3><div class="tbl-wrap"><table><thead><tr><th>When</th><th>Project</th><th>By</th><th>File</th><th>Result</th></tr></thead><tbody>${imp.map(x => `<tr><td>${x.when}</td><td>${x.project}</td><td>${esc(x.who)}</td><td>${esc(x.file)}</td><td><span class="badge ${x.result === 'Passed' ? 'b-ok' : 'b-bad'}">${esc(x.result)}</span></td></tr>`).join('') || '<tr><td colspan="5" class="empty">Nothing in the last 7 days.</td></tr>'}</tbody></table></div>
+    <h3>Report load errors</h3><div class="tbl-wrap"><table><thead><tr><th>Project</th><th>Report</th><th class="num">Count</th><th>Last</th><th>Message</th></tr></thead><tbody>${emb.map(x => `<tr><td>${x.project}</td><td>${x.report}</td><td class="num">${x.count}</td><td>${x.last}</td><td>${esc(x.msg)}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">None.</td></tr>'}</tbody></table></div>
+    <p class="foot">Service refresh: none. Databooks are refreshed in Power BI Desktop and uploaded, so there are no scheduled refreshes to fail.</p>`;
+}
+
+/* ---------- step by step ---------- */
+const LIFE = [
+  ['Set up', [
+    ['acp','Create the project','Client, companies with their codes, end date. One short form.'],
+    ['auto','Profile and workspace for a new client','First project of a client: its own Power BI profile and workspace on the capacity. Later projects reuse them.'],
+    ['acp','Add ACP colleagues','Pick from the directory; the rank proposes Lead, Member or Viewer, the lead decides.'],
+    ['auto','Grants saved, rights applied','Project roles in the database; rank is informational.'] ]],
+  ['Give access', [
+    ['acp','Add client contacts (or the client admin does)','Email, function, companies, end date, PDF yes or no.'],
+    ['auto','Account and invitation','External ID account, single-use invitation link, email code as second factor.'],
+    ['client','Client accepts once','Sets a password; passkey optional.'] ]],
+  ['Publish', [
+    ['acp','Refresh the Databook in Power BI Desktop','As today; the data sources stay on ACP’s side.'],
+    ['acp','Drop the .pbix in the portal','One file drop on the project page.'],
+    ['auto','Import as the client’s profile, checks through XMLA','Template version, roles, company codes, every client table filtered.'],
+    ['auto','KPI snapshot','Headline figures per company scope for the Analytics home.'],
+    ['auto','Clear message if a check fails','What to fix; listed in Health.'],
+    ['acp','Preview, also as each client','View as: the same RLS the client gets.'],
+    ['acp','Another lead releases','Four-eyes rule; release note for clients.'],
+    ['auto','Live switch and email','Previous version kept for roll-back; model pre-warmed.'] ]],
+  ['Use', [
+    ['client','Client signs in and opens the Databook','Analytics home, then a report.'],
+    ['auto','Token per view, renewed in the background','One report, one model, the client’s codes, 30 minutes.'],
+    ['auto','Activity for the ACP team','Last opened, views, most-read page.'] ]],
+  ['End', [
+    ['auto','Reminder before the end date','To the leads, with a one-click extension.'],
+    ['auto','Access ends on the end date','Grants expire; External ID account disabled if on no other project.'],
+    ['auto','Quarterly access review','Each lead confirms their client contacts.'],
+    ['auto','Clean-up after retention','Model and report deleted; the audit log is kept.'] ]]
+];
+function viewSteps(){
+  const all = LIFE.flatMap(p => p[1]), n = k => all.filter(s => s[0] === k).length, tot = all.length, pct = k => (n(k) / tot * 100).toFixed(1);
+  const who = { acp:'ACP team', client:'Client', auto:'Automatic' };
+  let i = 0;
+  const list = LIFE.map(([ph, steps]) => `<div class="lc-phase">${ph}</div><ul class="lc">${steps.map(([k, t, d]) => `<li class="k-${k}"><span class="no">${++i}</span><div><b>${t}</b><div class="d">${d}</div></div><span class="who">${who[k]}</span></li>`).join('')}</ul>`).join('');
+  return `<div class="stack"><div class="card"><h2 class="h">${n('auto')} of ${tot} steps run by themselves. The rest are decisions only a person can make.</h2>
+    <p class="lead">The ACP team decides who sees what and when it goes out; the client signs in. Everything between those decisions is automatic. Sejal has no step in a normal project.</p>
+    <div class="meter" role="img" aria-label="${n('auto')} automatic, ${n('acp')} ACP team, ${n('client')} client"><i style="width:${pct('auto')}%;background:#8f82d6"></i><i style="width:${pct('acp')}%;background:#f0c35a"></i><i style="width:${pct('client')}%;background:#5fa9c2"></i></div>
+    <div class="legend"><span><i style="background:#8f82d6"></i>Automatic: ${n('auto')}</span><span><i style="background:#f0c35a"></i>ACP team: ${n('acp')}</span><span><i style="background:#5fa9c2"></i>Client: ${n('client')}</span><span><i style="background:#ccc"></i>Sejal: 0</span></div></div>
+  <div class="grid2" style="align-items:start"><div class="card"><h2>One project, start to finish</h2>${list}</div>
+    <div class="stack"><div class="card"><h2>A new Databook version</h2><p class="sub" style="margin-top:0">Only steps 8 to 15 repeat: refresh, drop, preview, release.</p></div>
+      <div class="card"><h2>Sejal, once at the start</h2><ul class="steps"><li>User-assigned managed identity, in the Power BI security group</li><li>Tenant settings: service principals may use the APIs and create profiles (that group only); embedding on; publish to web off; XMLA read on</li><li>External ID tenant: branding, sign-up off, email code, Conditional Access</li><li>Fabric capacity in an EU region</li><li>Azure resources from the Bicep templates</li><li>Client and ACP roles and company codes in the Databook template</li></ul></div>
+      <div class="card"><h2>Sejal, from time to time</h2><ul class="steps"><li>New template versions</li><li>Approved client email domains</li><li>Break-glass support, rarely</li><li>The routine on the Maintenance page</li></ul></div></div></div></div>`;
+}
+
+/* ---------- security ---------- */
+function viewSecurity(){
+  const walls = [['Server-side grants','Every request resolves the project through the caller’s active grant. IDs from the browser are never trusted; not found and not allowed look the same (404).'],
+    ['SQL row-level security','The database itself returns only projects the session’s user holds, even if the application forgets a filter.'],
+    ['One Power BI profile per client','Tokens are generated as the client’s own profile, which can only reach that client’s workspace.'],
+    ['Token scoped to one report and one model','View only, 30 minutes, with the user’s company codes. Useless for any other item.'],
+    ['RLS inside the model','Role Client filters by company code; ACP-only tables return nothing to clients.']];
+  const attacks = [['Changes the URL to Client B’s project','Grant join finds nothing: 404, logged, rate-limited'],['Edits the API request (IDs, company codes)','Power BI IDs and codes are never read from requests'],['Hopes for a bug that loads the wrong project','SQL row-level security, and Client B’s workspace refuses Client A’s profile'],['Reuses the token on another report','The token names exact item IDs; Power BI rejects others'],['Opens app.powerbi.com','Client identities live in External ID and have no Power BI access'],['Opens a hidden page with developer tools','The Client role filters its data to nothing'],['Keeps watching after access was removed','At most until the token expires (30 min); renewal refused']];
+  return `<div class="stack"><div class="card"><h2 class="h">Five independent walls stand between Client A and Client B</h2><p class="lead">Each wall alone stops the common attacks; together they also cover a bug in any one of them.</p>
+    <div class="walls">${walls.map(([t, d], i) => `<div class="wall"><span class="n">${i + 1}</span><b>${t}</b><span>${d}</span></div>`).join('')}</div></div>
+  <div class="grid2" style="align-items:start"><div class="card"><h2>What a Client A user might try</h2><table><thead><tr><th>Attempt</th><th>What stops it</th></tr></thead><tbody>${attacks.map(([a, s]) => `<tr><td>${a}</td><td>${s}</td></tr>`).join('')}</tbody></table></div>
+    <div class="stack"><div class="card"><h2>Sign-in and session</h2><ul class="steps"><li>ACP: Entra ID single sign-on with Conditional Access</li><li>Clients: separate Entra External ID tenant, invitation only, email code as second factor, passkeys optional</li><li>Session in an HttpOnly, SameSite=Strict cookie; no sign-in token in the browser</li><li>Any change to a person’s access ends their old session on the next request</li></ul></div>
+      <div class="card"><h2>What remains</h2><ul class="steps"><li>Screenshots can’t be prevented; stated in the client terms</li><li>Up to 30 minutes of viewing after access is removed</li><li>Wrong numbers inside a Databook: preview and four-eyes release, not technology</li><li>Break-glass misuse: reason, time limit, notification, review</li></ul></div></div></div></div>`;
+}
+
+/* ---------- Power BI setup ---------- */
+function viewPowerBI(){
+  const ws = CLIENTS.map(c => `<tr><td><b>${esc(c.name)}</b><div class="sub">profile ${c.profile}</div></td><td>F2 &middot; Germany West Central</td><td>${PROJECTS.filter(p => p.client === c.key).map(p => `${p.id}: model + report`).join('<br>')}</td><td>Its profile only</td></tr>`).join('') + '<tr><td><b>Templates</b></td><td>F2</td><td>Golden reports (for later dynamic binding)</td><td>Managed identity</td></tr>';
+  return `<div class="stack"><div class="grid3">
+    <div class="card"><h2>Is there a Power BI workspace?</h2><p><b>Yes, one per client</b>, owned by that client's own service principal profile. Each project adds one semantic model and its report inside it.</p></div>
+    <div class="card"><h2>Do consultants publish to Power BI?</h2><p><b>No.</b> They refresh the Databook in Power BI Desktop as today and drop the .pbix in the portal. The import runs as the client's profile.</p></div>
+    <div class="card"><h2>Does anyone open app.powerbi.com?</h2><p><b>Only Sejal, for support.</b> Workspaces have no human members; clients have no Power BI identity at all.</p></div></div>
+  <div class="card"><h2>From Power BI Desktop to the client's screen</h2><div class="flow">
+    <div class="st me">${ico('pbi', 22)}<b>Refresh in Power BI Desktop</b><span>Consultant, as today</span></div>
+    <div class="st me">${ico('acp', 22)}<b>Drop the .pbix in the portal</b><span>Consultant</span></div>
+    <div class="st auto">${ico('functions', 22)}<b>Import as the client's profile</b><span>Functions job</span></div>
+    <div class="st auto">${ico('fabric', 22)}<b>Checks through XMLA, KPI snapshot</b><span>Functions job</span></div>
+    <div class="st me">${ico('acp', 22)}<b>Preview, another lead releases</b><span>ACP team</span></div>
+    <div class="st auto">${ico('pbi', 22)}<b>Embedded with a 30-minute token</b><span>Portal</span></div></div>
+    <div class="legend"><span><i style="background:#fff8e6;border:1px solid #f0d58a"></i>a person does it</span><span><i style="background:var(--robot-soft);border:1px solid #d6d0f3"></i>runs automatically</span></div></div>
+  <div class="card"><h2>What the Power BI service looks like behind the portal</h2><div class="pbisvc"><div class="bar">${ico('pbi', 16)} Power BI &middot; Workspaces</div>
+    <div class="tbl-wrap"><table><thead><tr><th>Workspace</th><th>Capacity</th><th>Content</th><th>Access</th></tr></thead><tbody>${ws}</tbody></table></div></div>
+    <p class="sub" style="margin-top:8px">About 200 workspaces for 200 clients, stable; projects add models, not workspaces.</p></div>
+  <div class="grid2"><div class="card"><h2>Three layouts compared</h2><div class="tbl-wrap"><table><thead><tr><th>Layout</th><th>For</th><th>Against</th></tr></thead><tbody>
+    <tr><td><b>Workspace per client + profiles</b> <span class="badge b-easy">chosen</span></td><td>Power BI refuses cross-client tokens; fits one Databook per engagement; Microsoft's recommended pattern</td><td>Onboarding automation needed (one API call per client)</td></tr>
+    <tr><td><b>One shared model + RLS</b></td><td>One report, one model</td><td>One filter mistake exposes all clients; needs a central model ACP doesn't have</td></tr>
+    <tr><td><b>Workspace per project, one identity</b> (earlier)</td><td>Simple</td><td>Isolation rests on application code alone</td></tr></tbody></table></div></div>
+    <div class="card"><h2>Who needs which licence</h2><div class="tbl-wrap"><table><thead><tr><th>Who</th><th>Needs</th></tr></thead><tbody>
+      <tr><td>Client</td><td>Nothing (app owns data)</td></tr><tr><td>ACP consultant</td><td>Power BI Desktop to refresh; viewing in the portal without Pro to confirm with ACP's Microsoft partner</td></tr>
+      <tr><td>Managed identity and profiles</td><td>No licence; the capacity carries the reports</td></tr><tr><td>Sejal</td><td>Pro, for support in the service</td></tr></tbody></table></div></div></div>
+  <div class="card"><h2>Confirmed limits and what to test</h2><ul class="steps"><li>Execute Queries does not support service principals on RLS models, so checks use the XMLA endpoint, which needs a capacity</li><li>Each profile can reach up to 1,000 workspaces; one service principal can own up to 100,000 profiles</li><li>Profiles belong to the identity that created them: the managed identity is locked against deletion</li><li>To test: memory per model on F2 for the largest Databook, and files over 1 GB</li></ul></div></div>`;
+}
+
+/* ---------- automation ---------- */
+const AUTO = [
+  ['Onboard a client','First project of a new client','Power BI REST: create profile, create workspace, assign to capacity, profile as admin','easy'],
+  ['Find colleagues and their rank','Add person, ACP internal','Microsoft Graph: user search, job title','easy'],
+  ['Invite a client user','Add person or client admin invite','Graph creates the External ID account; single-use link; identity linked at first sign-in','medium'],
+  ['Upload large files safely','File dropped','Browser uploads straight to Blob storage with a short-lived write-only link','easy'],
+  ['Import as a draft','Upload finished','Power BI Import API as the client profile; poll until done','medium'],
+  ['Checks and KPI snapshot','Import finished','XMLA endpoint with TOM / ADOMD.NET under the profile; DAX for template, roles, codes, KPIs','medium'],
+  ['Embed token per view','Report opened','GenerateToken V2 as the client profile; one report, one model, 30 minutes','easy'],
+  ['Release, roll back, notify','Click','Database switch; email through Azure Communication Services','easy'],
+  ['Client activity','Report events','Page events from the embedded report sent to the API','medium'],
+  ['End access, clean up','Nightly timer','Grants expire; Graph disables accounts; Power BI deletes items after retention','easy'],
+  ['Quarterly access review','Timer','Email to each lead with their client contacts; one-click confirm','easy'],
+  ['Capacity alert','Hourly','No simple API for capacity metrics: alert on slow or failed loads, Capacity Metrics app weekly','tricky'],
+  ['Deploy a new version','Merge to main','GitHub Actions with federated credentials; Bicep','medium']
+];
+function viewAutomation(){
+  const n = k => AUTO.filter(a => a[3] === k).length;
+  return `<div class="stack"><div class="card"><h2 class="h">Every step after the file drop runs by itself</h2><p class="lead">Each job is a documented Microsoft API. All Power BI calls run as the client's profile with the managed identity, so no secret exists anywhere.</p>
+    <div class="kpis" style="margin-top:14px"><div class="kpi"><div class="l">Automated jobs</div><div class="v">${AUTO.length}</div></div><div class="kpi"><div class="l">Easy</div><div class="v" style="color:var(--good)">${n('easy')}</div><div class="h">one documented call</div></div><div class="kpi"><div class="l">Medium</div><div class="v" style="color:var(--warn)">${n('medium')}</div><div class="h">waiting or several calls</div></div><div class="kpi"><div class="l">Tricky</div><div class="v" style="color:var(--bad)">${n('tricky')}</div><div class="h">needs a workaround</div></div></div></div>
+  <div class="card"><h2>What runs automatically</h2><div class="tbl-wrap"><table><thead><tr><th>Job</th><th>Starts when</th><th>How</th><th>Difficulty</th></tr></thead><tbody>${AUTO.map(([w, t, h, k]) => `<tr><td><b>${w}</b></td><td>${t}</td><td>${h}</td><td><span class="badge b-${k}">${k[0].toUpperCase() + k.slice(1)}</span></td></tr>`).join('')}</tbody></table></div></div></div>`;
+}
+
+/* ---------- how it works ---------- */
+function viewArch(){
+  const ink = '#172033', mut = '#5b6477', edge = '#8b93a5', acc = '#1d5c8c';
+  const box = (x, y, w, name, sub, main, k) => `<g><rect x="${x}" y="${y}" width="${w}" height="56" rx="8" fill="${main ? '#e8f0f7' : '#fff'}" stroke="${main ? acc : edge}" stroke-width="${main ? 2 : 1.25}"/>${k ? icoAt(k, x + 12, y + 16) : ''}<text x="${x + 46}" y="${y + 24}" font-size="13" font-weight="600" fill="${ink}">${name}</text><text x="${x + 46}" y="${y + 41}" font-size="11.5" fill="${mut}">${sub}</text></g>`;
+  const badge = (cx, cy, n) => `<circle cx="${cx}" cy="${cy}" r="9" fill="#fff" stroke="${acc}" stroke-width="1.25"/><text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="11" font-weight="600" fill="${acc}">${n}</text>`;
+  const ar = (d, dash) => `<path d="${d}" fill="none" stroke="${edge}" stroke-width="1.25" ${dash ? 'stroke-dasharray="5 4"' : ''} marker-end="url(#ah)"/>`;
+  const svg = `<svg viewBox="0 0 760 596" width="100%" role="img" aria-label="Architecture of the Databook portal" font-family="Segoe UI, system-ui, Arial, sans-serif">
+    <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${edge}"/></marker></defs>
+    ${box(48, 24, 316, 'Client users', 'Browser; never holds a sign-in token', false, 'person')}${box(396, 24, 340, 'ACP staff', 'Browser, ACP laptop', false, 'acp')}
+    ${box(48, 120, 316, 'Entra External ID', 'Client tenant; email code', false, 'external')}${box(396, 120, 340, 'Entra ID (ACP)', 'Single sign-on, Conditional Access', false, 'entra')}
+    ${ar('M206 80V120')}${ar('M566 80V120')}${ar('M206 176V216')}${ar('M566 176V216')}
+    <rect x="48" y="216" width="688" height="56" rx="8" fill="#e8f0f7" stroke="${acc}" stroke-width="2"/>${icoAt('appsvc', 64, 232)}
+    <text x="100" y="240" font-size="13" font-weight="600" fill="${ink}">App Service: ASP.NET Core backend-for-frontend (React pages + API)</text>
+    <text x="100" y="257" font-size="11.5" fill="${mut}">Holds the session cookie, checks every grant, asks Power BI for tokens</text>
+    <rect x="48" y="312" width="688" height="112" rx="8" fill="#f3f4f7" stroke="${edge}" stroke-width="1.25"/>${icoAt('azure', 418, 320, 18)}
+    <text x="720" y="334" text-anchor="end" font-size="11.5" font-weight="600" fill="${mut}">Azure · EU · managed identity, no secrets</text>
+    ${box(64, 348, 152, 'Azure SQL', 'Grants, audit', false, 'sql')}${box(232, 348, 152, 'Blob storage', 'Uploads', false, 'blob')}${box(400, 348, 152, 'Functions', 'Import, checks', false, 'functions')}${box(568, 348, 152, 'Key Vault', 'Config, keys', false, 'keyvault')}
+    ${ar('M140 272V348')}${ar('M476 272V348')}
+    <rect x="24" y="460" width="712" height="112" rx="8" fill="#f3f4f7" stroke="${edge}" stroke-width="1.25"/>${icoAt('pbi', 40, 466, 18)}
+    <text x="64" y="480" font-size="11.5" font-weight="600" fill="${mut}">Power BI · Fabric F2 · one profile and workspace per client</text>
+    ${box(40, 496, 216, 'Client A workspace', 'Model + report per project', false, 'fabric')}${box(272, 496, 216, 'Client B workspace', 'Model + report per project', false, 'fabric')}${box(504, 496, 216, 'Templates workspace', 'Golden reports (later)', false, 'pbi')}
+    ${ar('M728 272V460')}${ar('M476 404V460')}${ar('M48 52H28V460', true)}
+    <text x="486" y="444" font-size="11" fill="${mut}">import, XMLA checks</text>
+    ${badge(224, 100, 1)}${badge(224, 196, 2)}${badge(158, 292, 3)}${badge(748, 440, 4)}${badge(28, 300, 5)}
+  </svg>`;
+  return `<div class="stack"><div class="card"><h2 class="h">One app is the only door; the browser gets a 30-minute pass for one report</h2>
+    <div class="arch-wrap" style="margin-top:12px">${svg}</div>
+    <ol class="steps"><li>The person signs in: clients through External ID with an email code, ACP staff with ACP single sign-on</li><li>The backend sets an HttpOnly session cookie; no sign-in token reaches the browser</li><li>For every request the backend checks the grant in Azure SQL (and SQL row-level security checks again)</li><li>The backend asks Power BI for a token as the client's own profile: one report, one model, the user's company codes</li><li>The browser loads the report directly from Power BI with that token (dashed line); RLS filters it</li></ol></div>
+  <div class="card"><h2>Built from</h2>${techStrip()}<p class="foot">Icons simplified for this concept; Microsoft publishes official Azure icons for diagrams.</p></div></div>`;
+}
+
+/* ---------- maintenance ---------- */
+const MAINT = [
+  ['Secrets and certificates','Never','Not needed','Managed identity: nothing to rotate. Resource lock on it, because it owns the profiles'],
+  ['Server patches','Never','Not needed','App Service, Functions and SQL are managed by Azure'],
+  ['Backups','Continuous','Automatic','Azure SQL point-in-time restore; soft delete on files'],
+  ['Library updates','Monthly','Suggested automatically','Dependabot opens updates; Sejal merges; deployment is automatic'],
+  ['.NET version','Every 2 to 3 years','Manual','.NET 10 is supported until November 2028'],
+  ['Microsoft API changes','Rare','Manual','Power BI REST and Graph v1.0 are versioned and announced ahead'],
+  ['Client access review','Quarterly','Mostly automatic','Each lead confirms their client contacts'],
+  ['Capacity size','Quarterly','Manual','Capacity Metrics app; move from F2 to F4 in minutes if ever needed'],
+  ['Cost','Monthly','Automatic alert','Azure budget alert by email'],
+  ['Errors and slow reports','Continuous','Automatic alert','Application Insights alerts Sejal'],
+  ['Restore and profile recovery drill','Yearly','Manual','Rebuild from GitHub in a test subscription; run the profile recovery script']
+];
+function viewMaint(){
+  const badge = a => a.startsWith('Automatic') || a === 'Not needed' ? 'b-easy' : a.startsWith('Mostly') || a.startsWith('Suggested') ? 'b-info' : 'b-medium';
+  return `<div class="stack"><div class="card"><h2 class="h">Low upkeep: no servers, no secrets, backups and clean-up run by themselves</h2><p class="lead">Managed Azure services only, a managed identity instead of passwords or certificates, and the whole setup as code in GitHub.</p></div>
+  <div class="card"><h2>What needs looking after</h2><div class="tbl-wrap"><table><thead><tr><th>Item</th><th>How often</th><th>Who</th><th>How</th></tr></thead><tbody>${MAINT.map(([w, f, a, h]) => `<tr><td><b>${w}</b></td><td>${f}</td><td><span class="badge ${badge(a)}">${a}</span></td><td>${h}</td></tr>`).join('')}</tbody></table></div></div>
+  <div class="card"><h2>What to watch in the long run</h2><ul class="steps"><li><b>One person:</b> Sejal builds, runs and supports it; backup admin (T. Thal), runbooks and setup as code make a handover possible</li><li><b>Microsoft changes:</b> Fabric prices and SKUs; review once a year</li><li><b>Growth:</b> heavy clients can move to their own capacity without code changes</li></ul></div></div>`;
+}
+
+/* ---------- plan ---------- */
+function viewPlan(){
+  const ph = [['0','Discovery and decisions',1,1],['1','Foundations: repository, environments, deployment',1,1],['2','Identity and sessions (ACP Entra ID, External ID)',1,1],['3','Data model and authorization, SQL row-level security',1,1],['4','Power BI: profiles, workspaces, embedding',1,1],['5','Upload, XMLA checks, release',1,1],['6','Client analytics experience',1,1],['7','ACP analytics, administration, health',1,1],['8','Security hardening, penetration test',0,1],['9','Pilot with two clients, capacity load test',0,1],['10','Go-live, monitoring, handover',0,1]];
+  const gates = [['Gate 1: the security path works','After phase 4: two example clients, each sees only its own data'],['Gate 2: partners say go','After the demo: the experience convinces'],['Gate 3: the pilot works','After phase 9: two clients use it, no isolation findings']];
+  return `<div class="stack"><div class="card"><h2 class="h">The security path is proven before any polish, and money is spent only after the demo convinces</h2>
+    <p class="lead">The demo covers phases 0 to 7 in a reduced form on example data: no capacity for embedding, a few hours of pay-as-you-go capacity for the XMLA checks.</p>
+    <div class="tbl-wrap" style="margin-top:10px"><table><thead><tr><th>Phase</th><th>Content</th><th>Demo</th><th>Production</th></tr></thead><tbody>${ph.map(([n, t, d, p]) => `<tr><td><b>${n}</b></td><td>${t}</td><td>${d ? '&#10003;' : '&ndash;'}</td><td>${p ? '&#10003;' : '&ndash;'}</td></tr>`).join('')}</tbody></table></div>
+    <div class="phases" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:14px">${gates.map(([n, t]) => `<div class="kpi"><b>${n}</b><div class="sub">${t}</div></div>`).join('')}</div></div>
+  <div class="grid2"><div class="card"><h2>People</h2><table><tbody>
+      <tr><td><b>Sejal</b></td><td>Builds and owns the portal; Azure, Entra and Power BI setup; template; support</td></tr>
+      <tr><td><b>Patrik</b></td><td>Sponsor; decision at each gate; notified on break-glass</td></tr>
+      <tr><td><b>Data protection officer</b></td><td>Activity data, client terms, retention</td></tr>
+      <tr><td><b>Backup admin</b></td><td>Second platform admin account</td></tr>
+      <tr><td><b>Pilot users</b></td><td>Two consultants, two client contacts</td></tr></tbody></table></div>
+    <div class="card"><h2>Running cost a month (approximate)</h2><table><tbody>
+      <tr><td>Fabric F2 capacity</td><td class="num">about EUR 240</td></tr>
+      <tr><td>App Service, SQL, Functions, storage, monitoring</td><td class="num">about EUR 100 to 180</td></tr>
+      <tr class="tot"><td>Plan with</td><td class="num">about EUR 350 to 450</td></tr></tbody></table>
+      <p class="sub">Flat, whether 20 or 800 people view. Pro for every viewer would be about EUR 10,000; F64 about EUR 4,600 to 7,800. A load test before the pilot confirms F2.</p></div></div>
+  <div class="card"><h2>Decisions needed before phase 1</h2><ul class="steps"><li>Patrik: approve the architecture and the rule for restricted projects</li><li>Microsoft partner: ACP staff viewing without Pro; current F2 price and reservation</li><li>Sejal: list the existing reports, their workspace and capacity, and the tenant settings</li><li>Data protection officer: activity data, client terms, retention</li></ul>
+    <p class="foot">Full reasoning: <a href="https://claude.ai/artifact/5m7vS4xVgQJuGgvCFQaGL2" target="_blank" rel="noopener">Databook Portal: Architecture Review</a>.</p></div></div>`;
+}
+
+/* ---------- guided tour ---------- */
+const BERTA = 'b.beispiel@muster-gmbh.example';
+function clAt(stage, view, pkey, rkey){ closeModal(); state.cl.stage = stage; state.cl.view = view || 'home'; state.cl.pkey = pkey || null; state.cl.menu = null; state.cl.demo = 'ready'; state.highlight = false; if (rkey){ state.cl.rkey = rkey; resetRep(rkey); } state.page = 'client'; render(); window.scrollTo(0, 0); }
+function acpAs(email, tab, view, pkey){ closeModal(); const a = state.acp; a.user = email; a.tab = tab || 'analytics'; a.view = view || 'portfolio'; if (pkey){ a.pkey = pkey; a.ckey = proj(pkey).client; } a.upload = null; state.page = 'acp'; render(); window.scrollTo(0, 0); }
+function ensureDraft(by){ const p = proj('p_7Kq2xV'); state.acp.upload = null; if (!p.draft) p.draft = { v:(p.live ? p.live.v : 0) + 1, file:'Databook_DB-1042_v3.pbix', template:'1.6', asOf:'2026-09-30', uploadedBy:by || 'l.lange@acp.example', uploaded:TODAY }; }
+const TOUR = [
+  { t:'The idea', x:'A branded portal for clients and an analytics workspace for ACP, with Power BI underneath. This tour follows one client and one project team.', go(){ go('overview'); } },
+  { t:'Client: two ways to sign in', x:'Clients whose company is connected use their own Microsoft work account. Everyone else uses a portal account: email, password and an email code.', go(){ clAt('signin'); } },
+  { t:'Client: company Microsoft sign-in', x:'Berta’s company, the Muster group, is connected, so her own company login and its security rules apply. No extra password.', go(){ clAt('ms'); } },
+  { t:'Client: portal account with email code', x:'For clients that aren’t connected: password, then a code sent by email. Passkeys can replace the password.', go(){ clAt('otp'); } },
+  { t:'Client: Analytics home', x:'Welcome, data date, ACP contact, five key figures from the release snapshot, and the reports. All drawn by the portal, so it loads instantly.', go(){ clAt('app', 'home', 'p_7Kq2xV'); } },
+  { t:'Client: two projects', x:'Berta holds two projects. The switcher lists only those, each with its data date and her companies.', go(){ clAt('app', 'home', 'p_7Kq2xV'); state.cl.menu = 'sw'; render(); } },
+  { t:'Client: switching', x:'The refinancing project covers all three group companies. The key figures change; nothing from the carve-out is carried over.', go(){ clAt('app', 'home', 'p_7Kq2xV'); clSwitch('p_R2mW9a'); } },
+  { t:'Client: a detailed report', x:'Group view, embedded from Power BI under the Muster group’s profile. Period and company filters, page tabs, PDF because her grant allows it.', go(){ clAt('app', 'report', 'p_R2mW9a', 'group'); } },
+  { t:'Portal or Power BI?', x:'Blue: drawn by the portal. Yellow: rendered by Power BI. The filters are convenience; security comes from the token and the model.', go(){ clAt('app', 'report', 'p_R2mW9a', 'group'); state.highlight = true; render(); } },
+  { t:'States', x:'Loading, empty, error, busy and no access are designed, not left to chance. No access looks the same whether the project exists or not.', go(){ clAt('app', 'report', 'p_7Kq2xV', 'databook'); state.cl.demo = 'error'; render(); } },
+  { t:'Client admin: invite', x:'Berta invites a colleague from her own domain and can only give access she has herself. ACP is told about every invitation.', go(){ clAt('app', 'team', 'p_7Kq2xV'); } },
+  { t:'ACP: portfolio', x:'P. Peters, Partner, is portfolio viewer for two clients. Totals cover only those; the restricted Probe mandate isn’t even counted.', go(){ acpAs('p.peters@acp.example'); } },
+  { t:'ACP: client overview', x:'The Muster group’s projects with data age, template, checks and headline figures. Never summed across projects.', go(){ acpAs('p.peters@acp.example'); acpClientOpen('c_muster'); } },
+  { t:'ACP: the project', x:'A. Muster, Manager and Lead: key figures, reports, people, the file, freshness and quality, client activity.', go(){ acpAs('a.muster@acp.example', 'analytics', 'project', 'p_7Kq2xV'); } },
+  { t:'ACP: add a colleague', x:'The rank proposes the project role; the lead decides. Rights come from the role, not from the rank.', go(){ acpAs('a.muster@acp.example', 'analytics', 'project', 'p_7Kq2xV'); addPersonForm('acp'); pick('k.klein@acp.example'); } },
+  { t:'ACP: upload and checks', x:'L. Lange, Member, drops the refreshed file. It is imported as the client’s profile and checked through XMLA.', go(){ acpAs('l.lange@acp.example', 'analytics', 'project', 'p_7Kq2xV'); upload('Databook_DB-1042_v3.pbix', true); } },
+  { t:'ACP: the report, ACP view', x:'All companies, Excel export, and the ACP-only data checks page.', go(){ ensureDraft(); acpAs('a.muster@acp.example', 'analytics', 'project', 'p_7Kq2xV'); acpOpenReport('databook'); repPage('checks'); } },
+  { t:'ACP: view as the client', x:'Before release the team sees exactly what B. Beispiel will see: the same RLS identity, the checks page gone.', go(){ ensureDraft(); acpAs('a.muster@acp.example', 'analytics', 'project', 'p_7Kq2xV'); acpOpenReport('databook'); viewAs(BERTA); } },
+  { t:'ACP: four-eyes', x:'L. Lange uploaded, so she can’t release. She asks a lead.', go(){ ensureDraft(); acpAs('l.lange@acp.example', 'analytics', 'project', 'p_7Kq2xV'); releaseForm(); } },
+  { t:'ACP: release', x:'A. Muster, a lead who didn’t upload, releases with a note for the clients.', go(){ ensureDraft(); acpAs('a.muster@acp.example', 'analytics', 'project', 'p_7Kq2xV'); releaseForm(); } },
+  { t:'Sejal: administration', x:'Users, roles, templates, audit. No client figures; break-glass access with a reason when support needs it.', go(){ acpAs('sejal@acp.example', 'admin'); state.acp.admTab = 'projects'; render(); } },
+  { t:'Health', x:'Rejected imports, report load errors, token failures and capacity, for admins and for leads on their own projects.', go(){ acpAs('sejal@acp.example', 'health'); } },
+  { t:'Security', x:'Five independent walls between Client A and Client B.', go(){ go('security'); } },
+  { t:'Power BI setup', x:'One profile and workspace per client, one model per project, nobody publishes by hand.', go(){ go('powerbi'); } },
+  { t:'Step by step', x:'Which steps people take and which run by themselves.', go(){ go('steps'); } },
+  { t:'How it works', x:'One app as the only door; the browser gets a 30-minute pass for one report.', go(){ go('arch'); } },
+  { t:'The plan', x:'Phases, gates, people and running cost.', go(){ go('plan'); } }
+];
+function go(page){ closeModal(); state.page = page; render(); window.scrollTo(0, 0); }
+function startTour(i){ state.tour = i; TOUR[i].go(); renderTour(); }
+function endTour(){ state.tour = null; closeModal(); renderTour(); }
+function renderTour(){
+  const el = $('#tour'), i = state.tour;
+  el.hidden = i === null;
+  if (i === null){ el.innerHTML = ''; return; }
+  const s = TOUR[i];
+  el.innerHTML = `<span class="n">Step ${i + 1} of ${TOUR.length}</span><span class="tt">${esc(s.t)}</span><span class="tx">${esc(s.x)}</span>
+    <span class="dots">${TOUR.map((_, k) => `<button class="${k === i ? 'on' : ''}" aria-label="Go to step ${k + 1}" onclick="startTour(${k})"></button>`).join('')}</span>
+    <button class="btn small" onclick="startTour(${Math.max(0, i - 1)})" ${i ? '' : 'disabled'}>Back</button>
+    ${i < TOUR.length - 1 ? `<button class="btn small primary" onclick="startTour(${i + 1})">Next</button>` : '<button class="btn small primary" onclick="endTour()">Finish</button>'}
+    <button class="btn small" onclick="endTour()">Close</button>`;
+}
+document.addEventListener('keydown', e => {
+  if (state.tour === null) return;
+  if (e.target && e.target.matches && e.target.matches('input, select, textarea')) return;
+  if (e.key === 'ArrowRight' && state.tour < TOUR.length - 1) startTour(state.tour + 1);
+  if (e.key === 'ArrowLeft' && state.tour > 0) startTour(state.tour - 1);
+});
+
+/* ---------- render ---------- */
+function wireDrop(){
+  const d = $('#drop'); if (!d) return;
+  d.addEventListener('dragover', e => { e.preventDefault(); d.classList.add('over'); });
+  d.addEventListener('dragleave', () => d.classList.remove('over'));
+  d.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; const n = f ? f.name : 'Databook.pbix'; upload(n, !/old/i.test(n)); });
+}
+function render(){
+  $$('.side nav button').forEach(b => b.classList.toggle('on', b.dataset.page === state.page));
+  const [t, s] = PAGES[state.page];
+  $('#ptitle').textContent = t; $('#psub').textContent = s;
+  const tryPage = TRY.includes(state.page);
+  $('#notesToggle').hidden = !tryPage;
+  $('#content').classList.toggle('nonotes', !state.notes || !tryPage);
+  const v = { overview:viewOverview, client:viewClient, acp:viewAcp, steps:viewSteps, security:viewSecurity, powerbi:viewPowerBI, automation:viewAutomation, arch:viewArch, maint:viewMaint, plan:viewPlan }[state.page];
+  $('#screen').innerHTML = v();
+  wireDrop();
+}
+$$('.side nav button').forEach(b => b.addEventListener('click', () => go(b.dataset.page)));
+$('#showNotes').addEventListener('change', e => { state.notes = e.target.checked; render(); });
+render();
+</script>
+
+</body></html>

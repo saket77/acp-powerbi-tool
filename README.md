@@ -19,35 +19,55 @@ validation and exceptions.
 ## Shape of the system
 
 ```
-Consultant / Client viewer
-        │
-React portal + ASP.NET Core API        ← authorizes access, issues embed tokens
-        │
-   ┌────┼─────────────────┬──────────────────────┐
-Azure SQL      Blob + Queue + Functions      Entra ID (staff)
-grants,        private .pbix staging,        Entra External ID (clients, MFA)
-report IDs     import + validation
-        │
-Power BI Service on a Fabric capacity
+Consultant (Entra ID SSO)          Client viewer (Entra External ID, email code)
+            │                                   │
+    React + ASP.NET Core backend-for-frontend, .NET 10 on App Service
+    HttpOnly session cookie · checks every grant · asks Power BI for tokens
+    managed identity — no secrets anywhere
+            │
+   ┌────────┼──────────────┬─────────────────┐
+Azure SQL          Blob + Functions       Key Vault / App Insights
+grants, audit,     .pbix staging,         config, logs, alerts
+KPIs, SQL RLS      import + XMLA checks
+            │
+Power BI Embedded on Fabric F2
   one workspace + service-principal profile per CLIENT
   one report + semantic model per PROJECT
-  RLS restricts legal entities within a project
+  30-minute token: one report, one model, the user's company codes
 ```
 
 **Key principle:** the API authorizes; Power BI hosts and renders. Functions do slow background
 work, never the user's live report request.
 
+**Five walls** stand between any two clients — server-side grants, SQL row-level security, the
+per-client profile, the token's item scope, and RLS inside the model. Each stops the common
+attacks alone; together they cover a bug in any one of them.
+
+| | |
+| --- | --- |
+| Viewers need | **No licence** — app owns data |
+| Running cost | **EUR 350–450/month** on F2, flat regardless of viewer count |
+| Automation | **13 of 22** lifecycle steps run by themselves |
+| Steps for the platform owner per project | **0** — support only |
+
 ## Docs
 
 | File | What it holds |
 | --- | --- |
-| [docs/architecture.md](docs/architecture.md) | **Authoritative design** (29 Oct 2026 proposal) |
-| [docs/product-brief.md](docs/product-brief.md) | Origin brief (26 Oct 2026): problem, users, screens, template contract |
-| [docs/decisions-and-deltas.md](docs/decisions-and-deltas.md) | What the architecture review changed, and why it matters |
-| [docs/open-questions.md](docs/open-questions.md) | What must be proven before build; unresolved choices |
+| [docs/wireframe.md](docs/wireframe.md) | **Source of truth — build against this.** The interactive concept: 22-step lifecycle, five walls, API surface, phases, costs |
+| [docs/decisions-and-deltas.md](docs/decisions-and-deltas.md) | **Read second.** Three artifacts disagree; this is which one wins on each point |
+| [docs/architecture.md](docs/architecture.md) | 29 Oct architecture proposal — superseded in detail, sound in structure |
+| [docs/product-brief.md](docs/product-brief.md) | 26 Oct origin brief: problem, users, the template contract |
+| [docs/open-questions.md](docs/open-questions.md) | What is still open, what is answered, who owes a decision |
 | [docs/pitch.md](docs/pitch.md) | The management briefing script |
 | [docs/references.md](docs/references.md) | Microsoft docs, starter kits, comparable products |
-| [docs/source/](docs/source/) | Original PDFs, extracted text, rendered diagrams |
+| [docs/source/](docs/source/) | The wireframe itself, original PDFs, extracted text, rendered diagrams |
+
+Open the wireframe — it is the best single explanation of the product:
+
+```bash
+open docs/source/wireframe.html
+```
 
 ## Hard constraints
 
