@@ -18,7 +18,8 @@ namespace Acp.Portal.Tests;
 /// </remarks>
 internal sealed class PortalAppFactory(
     IDictionary<string, string?>? settings = null,
-    Action<IServiceCollection>? configureServices = null)
+    Action<IServiceCollection>? configureServices = null,
+    string? connectionString = null)
     : WebApplicationFactory<Program>
 {
     private readonly string _databaseName = $"tests-{Guid.NewGuid()}";
@@ -27,8 +28,13 @@ internal sealed class PortalAppFactory(
     {
         builder.UseEnvironment("Development");
 
-        // AddPortalInfrastructure refuses to start without one; the value is never dialled.
-        builder.UseSetting("ConnectionStrings:Portal", "Server=unused;Database=unused;");
+        // With no connection string the database is swapped for an in-memory one below and this
+        // value is never dialled. With one, the app runs against real SQL Server — which the
+        // isolation suite needs, because row-level security is a database feature and a fake
+        // would prove nothing.
+        builder.UseSetting(
+            "ConnectionStrings:Portal",
+            connectionString ?? "Server=unused;Database=unused;");
 
         // Added last so it beats appsettings.Development.json *and* any config/entra.local.json
         // the developer running the tests happens to have filled in. A test must not change
@@ -45,6 +51,14 @@ internal sealed class PortalAppFactory(
 
         builder.ConfigureServices(services =>
         {
+            if (connectionString is not null)
+            {
+                // Leave the real registration alone, interceptor and all: stamping the
+                // connection with who is asking is the thing under test.
+                configureServices?.Invoke(services);
+                return;
+            }
+
             var toRemove = services.Where(d =>
                     d.ServiceType == typeof(PortalDbContext)
                     || d.ServiceType == typeof(DbContextOptions)

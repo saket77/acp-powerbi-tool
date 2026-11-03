@@ -1,11 +1,13 @@
 using Acp.Portal.Domain.Abstractions;
 using Acp.Portal.Infrastructure.Data;
+using Acp.Portal.Infrastructure.Projects;
 using Acp.Portal.Infrastructure.Identity;
 using Azure.Core;
 using Azure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Acp.Portal.Infrastructure;
 
@@ -20,19 +22,40 @@ public static class DependencyInjection
                 "ConnectionStrings:Portal is not configured. For local development run "
                 + "`docker compose up -d` and use the value in appsettings.Development.json.");
 
-        services.AddDbContext<PortalDbContext>(options =>
-            options.UseSqlServer(connectionString, sql =>
-            {
-                sql.MigrationsAssembly(typeof(PortalDbContext).Assembly.FullName);
+        // Fail closed. Anything that has not registered a real accessor — the design-time
+        // tooling, a stray root-scope resolve — is nobody, and row-level security shows nobody
+        // nothing. The API registers the HTTP-backed one before calling this, so TryAdd leaves
+        // it alone.
+        services.TryAddScoped<ICurrentUserAccessor, NobodyCurrentUserAccessor>();
+        services.AddScoped<SessionContextInterceptor>();
 
-                // Local SQL Server runs under emulation on Apple Silicon and is slow to wake.
-                // Retry rather than fail the first request after `docker compose up`.
-                sql.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(10), null);
-            }));
+        services.AddDbContext<PortalDbContext>((serviceProvider, options) =>
+            options
+                .UseSqlServer(connectionString, sql =>
+                {
+                    sql.MigrationsAssembly(typeof(PortalDbContext).Assembly.FullName);
+
+                    // Local SQL Server runs under emulation on Apple Silicon and is slow to wake.
+                    // Retry rather than fail the first request after `docker compose up`.
+                    sql.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(10), null);
+                })
+                // Stamps every connection with who is asking. Without it the row-level security
+                // predicates see no user and the database correctly shows nothing at all.
+                .AddInterceptors(serviceProvider.GetRequiredService<SessionContextInterceptor>()));
 
         services.TryAddSingletonTimeProvider();
 
+        services.AddScoped<ClientDirectory>();
+        services.AddScoped<ProjectDirectory>();
+        services.AddScoped<GrantService>();
+
         return services;
+    }
+
+    /// <summary>The caller when there is no caller. Sees nothing, which is the safe direction.</summary>
+    private sealed class NobodyCurrentUserAccessor : ICurrentUserAccessor
+    {
+        public PortalCaller Current => PortalCaller.Anonymous;
     }
 
     /// <summary>

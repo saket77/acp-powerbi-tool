@@ -32,27 +32,22 @@ public static class InvitationEndpoints
 
             var invitedBy = principal.PortalUserId()!.Value;
 
-            try
-            {
-                var outcome = await invitations.InviteAsync(
-                    address.Address, request.DisplayName, invitedBy, cancellationToken);
+            // A refused invitation throws, and PortalRuleExceptionHandler turns it into a 409
+            // carrying the sentence the consultant needs to read.
+            var outcome = await invitations.InviteAsync(
+                address.Address, request.DisplayName, invitedBy, cancellationToken);
 
-                return Results.Created($"/api/acp/users/{outcome.User.Id}", new
-                {
-                    userId = outcome.User.Id,
-                    email = outcome.User.Email,
-                    displayName = outcome.User.DisplayName,
-                    kind = outcome.User.Kind.ToString(),
-                    outcome.AlreadyExisted,
-                    // Returned so a consultant can pass the link on when the email does not
-                    // arrive, which with personal Microsoft accounts is common enough to plan for.
-                    redeemUrl = outcome.RedeemUrl,
-                });
-            }
-            catch (InvitationRefusedException refused)
+            return Results.Created($"/api/acp/users/{outcome.User.Id}", new
             {
-                return Results.Problem(refused.Message, statusCode: StatusCodes.Status409Conflict);
-            }
+                userId = outcome.User.Id,
+                email = outcome.User.Email,
+                displayName = outcome.User.DisplayName,
+                kind = outcome.User.Kind.ToString(),
+                outcome.AlreadyExisted,
+                // Returned so a consultant can pass the link on when the email does not
+                // arrive, which with personal Microsoft accounts is common enough to plan for.
+                redeemUrl = outcome.RedeemUrl,
+            });
         });
 
         // The list a consultant checks after inviting someone. Phase 3 replaces it with the

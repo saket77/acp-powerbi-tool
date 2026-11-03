@@ -31,18 +31,21 @@ async function get<T>(path: string): Promise<T> {
   return (await response.json()) as T
 }
 
-async function post<T>(path: string, body: unknown): Promise<T> {
+async function send<T>(method: 'POST' | 'DELETE', path: string, body?: unknown): Promise<T> {
   const response = await fetch(path, {
-    method: 'POST',
+    method,
     credentials: 'same-origin',
-    headers: { ...json, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    headers: body === undefined ? json : { ...json, 'Content-Type': 'application/json' },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   })
 
   if (!response.ok) throw new ApiError(response.status, await describe(response))
 
   return response.status === 204 ? (undefined as T) : ((await response.json()) as T)
 }
+
+const post = <T,>(path: string, body: unknown) => send<T>('POST', path, body)
+const del = (path: string) => send<void>('DELETE', path)
 
 /**
  * ASP.NET Core answers a rejected request with a problem document. Reading the sentence out of
@@ -138,6 +141,79 @@ export interface VersionInfo {
   authMode: AuthMode
 }
 
+export type ProjectRole = 'Lead' | 'Member' | 'Viewer' | 'Client'
+
+export interface ClientSummary {
+  slug: string
+  name: string
+  companyCount: number
+  projectCount: number
+  provisioned: boolean
+}
+
+export interface CompanyView {
+  id: string
+  code: string
+  name: string
+}
+
+export interface ClientProject {
+  key: string
+  name: string
+  status: string
+  endDate: string
+}
+
+export interface ClientDetail {
+  slug: string
+  name: string
+  companies: CompanyView[]
+  projects: ClientProject[]
+}
+
+export interface ProjectListItem {
+  key: string
+  name: string
+  clientName: string
+  clientSlug: string
+  status: string
+  endDate: string
+  hasReleasedVersion: boolean
+}
+
+export interface ProjectDetail extends ProjectListItem {
+  versionCount: number
+}
+
+export interface GrantView {
+  id: string
+  userId: string
+  displayName: string
+  email: string
+  kind: UserKind
+  role: ProjectRole
+  endDate: string | null
+  companies: string[]
+}
+
+export interface AcpProjectView {
+  project: ProjectDetail
+  grants: GrantView[]
+}
+
+export interface NewClientBody {
+  name: string
+  slug?: string
+  companies: { code: string; name: string }[]
+}
+
+export interface NewGrantBody {
+  userId: string
+  role: ProjectRole
+  endDate?: string
+  companyIds?: string[]
+}
+
 export const api = {
   health: () => get<HealthReport>('/api/health'),
   version: () => get<VersionInfo>('/api/version'),
@@ -148,4 +224,21 @@ export const api = {
   users: () => get<PortalUser[]>('/api/acp/users'),
   inviteClientContact: (email: string, displayName: string) =>
     post<InvitationResult>('/api/acp/invitations', { email, displayName }),
+
+  /** Scoped to the caller by row-level security, so it serves consultants and clients alike. */
+  projects: () => get<ProjectListItem[]>('/api/projects'),
+  projectSummary: (key: string) => get<ProjectDetail>(`/api/projects/${encodeURIComponent(key)}/summary`),
+
+  clients: () => get<ClientSummary[]>('/api/acp/clients'),
+  client: (slug: string) => get<ClientDetail>(`/api/acp/clients/${encodeURIComponent(slug)}`),
+  createClient: (body: NewClientBody) => post<ClientDetail>('/api/acp/clients', body),
+
+  acpProject: (key: string) => get<AcpProjectView>(`/api/acp/projects/${encodeURIComponent(key)}`),
+  createProject: (body: { clientSlug: string; key?: string; name: string; endDate?: string }) =>
+    post<ProjectDetail>('/api/acp/projects', body),
+
+  setGrant: (projectKey: string, body: NewGrantBody) =>
+    post<GrantView>(`/api/acp/projects/${encodeURIComponent(projectKey)}/grants`, body),
+  revokeGrant: (projectKey: string, grantId: string) =>
+    del(`/api/acp/projects/${encodeURIComponent(projectKey)}/grants/${grantId}`),
 }

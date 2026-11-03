@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 namespace Acp.Portal.Infrastructure.Identity;
 
 /// <summary>Raised when an invitation is well-formed but must not be sent.</summary>
-public sealed class InvitationRefusedException(string reason) : Exception(reason);
+public sealed class InvitationRefusedException(string reason) : PortalRuleException(reason);
 
 /// <summary>
 /// Inviting a client contact: one directory call and one row, in that order.

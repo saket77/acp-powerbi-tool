@@ -108,6 +108,7 @@ What we will lean on:
 | KPI snapshot in the pipeline | Compute on read for the MVP | Not on the security path | Low |
 | MSAL in the browser | OpenID Connect on the **server**, opaque cookie in the browser | See below | Low — it is one file |
 | — | A second sign-in source for local work | See below | Low — delete two endpoints |
+| Any access change ends the session | Only **removal and narrowing** do | See below | Trivial — one `if` |
 
 **Why the sign-in moved to the server** (added in Phase 2). The plan said MSAL in the browser
 *and* an HttpOnly cookie, and the wireframe's rule that no token is visible in the browser. All
@@ -127,6 +128,13 @@ picker. It is not a bypass — the same resolver, classification, session cookie
 stamp run either way, which is exactly what makes it worth having, because the development loop
 exercises the production code path instead of avoiding it. It refuses to start outside the
 Development environment, and its endpoints are not mapped in any other mode.
+
+**Why only removal ends a session** (added in Phase 3). Rule 4 of the API rules says any change
+to a person's access ends their session on the next request. Taken literally that signs a client
+out at the moment somebody grants them a Databook, which is confusing for no gain: a new grant
+only ever widens what they can see, and the next query picks it up anyway. So the security stamp
+is bumped when a grant is removed or an existing one is changed, and not when a brand-new one is
+added. Revocation still bites immediately, which is what the rule is actually for.
 
 > **The one that bites if you get it wrong.** Service principal profiles belong permanently to
 > the identity that created them. If you create profiles locally with an app registration and
@@ -340,7 +348,7 @@ browser.
 sentence of the definition — your real account, two real Microsoft accounts — needs D1–D4 and
 `scripts/tenant-setup.md`. Nothing in the code is waiting on it.*
 
-### Phase 3 — Grants and SQL RLS · *me*
+### Phase 3 — Grants and SQL RLS · *me* — **built**
 
 The data model, the grant rules, SQL RLS predicates, `SESSION_CONTEXT` wiring, the audit table,
 and the 404-for-everything behaviour.
@@ -348,6 +356,34 @@ and the 404-for-everything behaviour.
 **Done when:** `Acp.Portal.Tests.Isolation` passes with Power BI entirely stubbed — a client
 user asking for another client's project gets 404, and the same is true with the application's
 own filters deliberately disabled, because SQL refuses independently.
+
+*Status: done. Thirteen isolation tests against real SQL Server, built from the real migrations.*
+
+**The predicate is uniform, with no exception for staff.** A row is visible if and only if the
+session's user holds a live grant on it. The obvious alternative — filter clients, let staff
+through — would have made the wall an exception rather than a rule, and exceptions get widened.
+Consultants therefore see projects because they are *on* them, which is why creating a project
+writes the creator's own Lead grant in the same transaction: without it they could not read back
+what they had just made.
+
+Two consequences worth knowing:
+
+- **No block predicate on inserting a project**, because at the moment of that insert the grant
+  does not exist yet. `ReportVersions` does get block predicates, where no such bootstrap exists.
+- **`ProjectGrants` itself is not filtered**, because the predicate reads it and filtering it
+  would recurse. Nothing exposes grants to clients; that stays an application rule.
+
+**Two facts about `SESSION_CONTEXT`, checked rather than recalled.** A pooled connection handed
+back out has its session context cleared, so one request's identity cannot leak into the next
+even though it is physically the same connection. And values can be written `@read_only = 1`,
+after which nothing in that session can change them — so injected SQL cannot re-stamp a
+connection as somebody else. Both are load-bearing; both were verified against SQL Server 2022
+before the design depended on them.
+
+**Row-level security is invisible to EF Core.** `IgnoreQueryFilters()` turns off filters EF
+itself added and knows nothing about a security policy, so no query can check whether a project
+key is taken by a project the caller cannot see. The unique index is the only thing that knows,
+which is why key clashes are caught from the database error rather than pre-checked.
 
 ### Phase 4 — Power BI, and the gate · *me + your capacity*
 

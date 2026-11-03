@@ -50,7 +50,7 @@ attacks alone; together they cover a bug in any one of them.
 | Automation | **13 of 22** lifecycle steps run by themselves |
 | Steps for the platform owner per project | **0** — support only |
 
-**Status of the code:** Phases 1–2 built. See [Running it locally](#running-it-locally) — it
+**Status of the code:** Phases 1–3 built. See [Running it locally](#running-it-locally) — it
 runs today with no Azure account and no Microsoft tenant.
 
 ## Docs
@@ -75,9 +75,9 @@ open docs/source/wireframe.html
 
 ## Running it locally
 
-Currently at **Phase 2** — identity. People sign in, the portal decides whether they are ACP
-staff or a client, and consultants can invite client contacts. No Power BI and no grants yet;
-those are Phases 3–4.
+Currently at **Phase 3** — clients, projects and grants, with row-level security in SQL behind
+them. People sign in, consultants create clients and projects and decide who may see each one,
+and clients see their own Databooks and nothing else. Power BI arrives in Phase 4.
 
 ```bash
 scripts/dev-up.sh                 # colima + SQL Server + Azurite, waits until SQL is ready
@@ -89,7 +89,7 @@ npm --prefix web run dev                    # http://localhost:5173
 Then open <http://localhost:5173> and pick somebody from the account picker.
 
 ```bash
-dotnet build && dotnet test       # 53 tests, no containers needed
+dotnet build && dotnet test       # 66 tests; 13 need SQL and skip without it
 scripts/dev-down.sh               # --clean also drops the data volumes
 ```
 
@@ -120,6 +120,40 @@ That file is git-ignored and read only in development. Setting `Auth.Mode` to `E
 the switch. A deployed environment has no such file: it gets these values from app settings and
 authenticates to Graph as its managed identity.
 
+### The isolation suite
+
+Thirteen of the tests are the point of Phase 3, and they run against the real SQL Server from
+`docker-compose` — a database of their own, built from the real migrations. Row-level security
+is a database feature, and an in-memory provider would have agreed with every assertion while
+enforcing none of them. Without the containers running they skip with a reason rather than
+passing quietly.
+
+They build their world through the API, so the setup is itself a test of the consultant screens,
+and then check the wall from both sides: a client asking for another client's project gets 404
+over HTTP, *and* a bare `SELECT [Key] FROM Projects` — no `WHERE`, no EF, connected as `sa` —
+returns only their own row.
+
+```bash
+dotnet test --filter IsolationTests
+```
+
+### How the database decides what you can see
+
+Every connection is stamped with who is asking, and SQL Server filters `Projects` and
+`ReportVersions` to the rows that person holds a live grant on. The application does not
+filter — it does not have to, and that is the point: a query that forgets a `Where` returns
+nothing rather than everything.
+
+The predicate is uniform. A row is visible if and only if you hold a grant on it, with no
+exception for ACP staff — consultants see projects because they are on them, which is why
+creating a project writes the creator's own Lead grant in the same transaction. A rule with no
+exceptions is one nobody can widen later.
+
+Two facts make the stamping safe, both checked against SQL Server 2022 rather than recalled:
+a pooled connection handed back out has its session context **cleared**, so one request's
+identity cannot leak into the next; and the value is written **read-only**, so nothing inside a
+request — injected SQL included — can re-stamp the connection as somebody else.
+
 ### How the session works
 
 Sign-in happens on the server, not in the browser. What reaches the browser is an opaque
@@ -127,9 +161,11 @@ Sign-in happens on the server, not in the browser. What reaches the browser is a
 object id, name — and no token of any kind, because the portal calls Graph and Power BI as
 itself rather than as the person. The front end cannot read it and has nothing to leak.
 
-Every request re-checks the session's security stamp against the database, so a change to
-someone's access ends their session on their next request rather than whenever the cookie
-expires. Phase 3 is what bumps the stamp.
+Every request re-checks the session's security stamp against the database, so revoking
+somebody's access ends their session on their next request rather than whenever the cookie
+expires. Removing a grant bumps the stamp; adding one deliberately does not, because that only
+ever widens what somebody can see and signing a client out at the moment they are given
+something to look at would be confusing for no gain.
 
 ### Two things about this machine
 

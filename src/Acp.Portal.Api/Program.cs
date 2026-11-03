@@ -1,6 +1,8 @@
 using System.Text.Json;
+using Acp.Portal.Api;
 using Acp.Portal.Api.Auth;
 using Acp.Portal.Api.Endpoints;
+using Acp.Portal.Domain.Abstractions;
 using Acp.Portal.Infrastructure;
 using Acp.Portal.Infrastructure.Data;
 using Acp.Portal.Infrastructure.Identity;
@@ -23,6 +25,11 @@ var authMode = builder.Configuration
     .GetSection(PortalAuthOptions.SectionName)
     .GetValue(typeof(AuthMode), "Mode") as AuthMode? ?? AuthMode.Development;
 
+// Registered before the infrastructure, which only fills in a fail-closed default if nothing
+// else has: everything the data layer shows is decided by what this reports.
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserAccessor, HttpCurrentUserAccessor>();
+
 builder.Services.AddPortalInfrastructure(builder.Configuration);
 builder.Services.AddPortalIdentity(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddPortalAuthentication(builder.Configuration, builder.Environment);
@@ -34,6 +41,7 @@ builder.Services
         failureStatus: HealthStatus.Unhealthy,
         tags: ["ready"]);
 
+builder.Services.AddExceptionHandler<PortalRuleExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
@@ -85,9 +93,9 @@ app.MapHealthChecks("/api/health", new()
 app.MapGet("/api/version", () => Results.Ok(new
 {
     name = "ACP Databook Portal",
-    phase = 2,
-    // Phase 2 adds identity: sign-in, the session cookie, and inviting client contacts.
-    // No Power BI and no grants yet. docs/implementation-plan.md tracks what each phase adds.
+    phase = 3,
+    // Phase 3 adds clients, projects, grants and SQL row-level security.
+    // No Power BI yet. docs/implementation-plan.md tracks what each phase adds.
     environment = app.Environment.EnvironmentName,
     authMode = authMode.ToString(),
 })).AllowAnonymous();
@@ -95,6 +103,10 @@ app.MapGet("/api/version", () => Results.Ok(new
 app.MapAuthEndpoints(authMode);
 app.MapMeEndpoint(authMode);
 app.MapInvitationEndpoints();
+app.MapProjectEndpoints();
+app.MapClientEndpoints();
+app.MapAcpProjectEndpoints();
+app.MapGrantEndpoints();
 
 app.Run();
 

@@ -42,7 +42,7 @@ public sealed class HealthEndpointTests : IDisposable
 
         var body = await client.GetFromJsonAsync<JsonElement>("/api/version");
 
-        Assert.Equal(2, body.GetProperty("phase").GetInt32());
+        Assert.Equal(3, body.GetProperty("phase").GetInt32());
     }
 
     public void Dispose() => _factory.Dispose();
