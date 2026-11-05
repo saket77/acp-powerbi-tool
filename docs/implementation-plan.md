@@ -456,7 +456,7 @@ by building a differently-configured client per profile — the opposite of what
 where the profile changes per request. Six typed calls against `HttpClient` are smaller and the
 failures are legible. `powerbi-client-react` *is* used, in the browser, where it is the whole job.
 
-### Phase 5 — Upload, checks, release · *me*
+### Phase 5 — Upload, checks, release · *me* — **built**
 
 SAS issuing, direct browser → Blob upload, queue message, `BackgroundService` consumer with a
 processing lock and retry, import as profile, then **XMLA checks over TOM/ADOMD**:
@@ -473,6 +473,41 @@ template 1.6."*). Then draft → preview-as-client → release by a **different*
 **Done when:** you drop a good `.pbix` and it reaches Draft unaided; you drop a deliberately
 broken one and get a message naming the fix; releasing as the uploader is refused; releasing as
 a second person works and the client sees the new version.
+
+*Status: all four, against Azurite and the real hosted worker, with Power BI and XMLA
+simulated. The browser's own upload was checked too — a CORS preflight, then a `PUT` straight to
+storage with a SAS reading `sp=cw` (create, write) and `sr=b` (one blob), never touching the
+API.*
+
+#### What was verified rather than assumed
+
+- **TOM and ADOMD load on .NET 10 on Apple Silicon.** The `amd64` in their package ids is
+  historical: each ships a single managed `netcoreapp3.0` assembly with no native payload. The
+  XMLA inspector compiles against both, so its AMO and ADOMD calls are at least real — the
+  compiler caught that the two libraries own *different* `AccessToken` types.
+- **Azurite refuses the service version the current Azure SDK asks for.** Fixed with
+  `--skipApiVersionCheck` in `docker-compose.yml` rather than by pinning the SDK, which would have
+  reached into production for an emulator's sake.
+
+#### What is most likely to be wrong the first time it runs
+
+| | Why it might be wrong | Cost if it is |
+| --- | --- | --- |
+| **Profiles over XMLA** | Service principals over XMLA are documented; service principal *profiles* over XMLA are not documented anywhere I could find | `PowerBi:XmlaConnectAs` is already `Application` by default. If that is what works, the app identity needs to be a member of each client workspace — which it created, through the profile, so it is the parent rather than a stranger. Embed tokens are unaffected; they are still minted as the profile |
+| The XMLA connection string | Token-based AMO connections to Power BI are community guidance, not documentation | Minutes — the error names the problem |
+| **The template conventions** | Table, column, measure and role names come from the wireframe, not from the real template — and *ACP-only tables recognised by an `ACP` name prefix* is a guess | Configuration under `PowerBi:` — expect to change values, not code, when D6 arrives |
+| Company codes read from the model | Read with no effective identity, so the query sees every company in the file. That is the intent; whether XMLA allows an unrestricted read of an RLS model as this identity is untested | Small |
+
+#### Two decisions worth knowing
+
+**A refused file is deleted from staging, not kept for diagnosis.** It is still a client's data,
+and the fewer copies exist the shorter the list of places it can leak from. The consultant still
+has the original; the message says what to change in it.
+
+**A permanently failed import shows as `CheckFailed`** with a sentence telling the consultant to
+contact the platform owner. Strictly, nothing was wrong with their file — but a version stuck in
+`Importing` forever would be worse, and the technical detail is on the job row where the health
+page (Phase 7) will show it.
 
 ### Phase 6 — Client experience · *me*
 

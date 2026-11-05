@@ -1,8 +1,9 @@
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Acp.Portal.Infrastructure.Staging;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Acp.Portal.Tests.Harness;
 
@@ -47,15 +48,81 @@ public sealed class PowerBiFixture : IAsyncLifetime
         return client;
     }
 
-    /// <summary>A .pbix in name only. The simulated Power BI drains the stream and discards it.</summary>
-    public static MultipartFormDataContent Pbix(string fileName = "databook.pbix")
+    /// <summary>
+    /// The whole upload: stage, PUT the bytes straight to Azurite with the issued SAS, tell the
+    /// portal it finished, then run the queued job.
+    /// </summary>
+    /// <remarks>
+    /// The PUT uses a bare <see cref="HttpClient"/> rather than the test server's, because the
+    /// point of this path is that the file does <i>not</i> go through the application. If the
+    /// SAS were wrong, or write-only in a way that forbade the write, this is where it would show.
+    /// </remarks>
+    public async Task<int> UploadAsync(HttpClient staff, string projectKey, string fileName = "databook.pbix")
     {
-        var content = new MultipartFormDataContent();
-        var file = new ByteArrayContent(Encoding.UTF8.GetBytes("not really a pbix"));
-        file.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-        content.Add(file, "file", fileName);
+        var staged = await StageAsync(staff, projectKey, fileName);
 
-        return content;
+        await PutAsync(staged.GetProperty("uploadUrl").GetString()!, "not really a pbix, and it does not need to be");
+
+        var uploadId = staged.GetProperty("uploadId").GetGuid();
+        (await staff.PostAsJsonAsync(
+            $"/api/acp/projects/{projectKey}/uploads/{uploadId}/complete", new { }))
+            .EnsureSuccessStatusCode();
+
+        await DrainAsync();
+
+        return staged.GetProperty("version").GetInt32();
+    }
+
+    public static async Task<JsonElement> StageAsync(HttpClient staff, string projectKey, string fileName)
+    {
+        var response = await staff.PostAsJsonAsync($"/api/acp/projects/{projectKey}/uploads", new { fileName });
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<JsonElement>();
+    }
+
+    /// <summary>Writes to Blob exactly as a browser would: a plain PUT with the block-blob header.</summary>
+    public static async Task<System.Net.HttpStatusCode> PutAsync(string sasUrl, string body)
+    {
+        using var direct = new HttpClient();
+        using var request = new HttpRequestMessage(HttpMethod.Put, sasUrl)
+        {
+            Content = new ByteArrayContent(Encoding.UTF8.GetBytes(body)),
+        };
+        request.Headers.Add("x-ms-blob-type", "BlockBlob");
+
+        using var response = await direct.SendAsync(request);
+        return response.StatusCode;
+    }
+
+    /// <summary>
+    /// Runs whatever is on the queue, now. The hosted worker is removed in tests so that an
+    /// import is something a test caused rather than something it waited for.
+    /// </summary>
+    /// <summary>Puts a job back on the queue, to stand in for a redelivered message.</summary>
+    public async Task RequeueAsync(Guid jobId)
+    {
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<ImportQueue>().EnqueueAsync(jobId);
+    }
+
+    public T Resolve<T>(IServiceScope scope) where T : notnull =>
+        scope.ServiceProvider.GetRequiredService<T>();
+
+    public IServiceScope NewScope() => _factory!.Services.CreateScope();
+
+    public async Task DrainAsync()
+    {
+        await using var scope = _factory!.Services.CreateAsyncScope();
+
+        var queue = scope.ServiceProvider.GetRequiredService<ImportQueue>();
+        var pipeline = scope.ServiceProvider.GetRequiredService<UploadPipeline>();
+
+        while (await queue.ReceiveAsync() is { } message)
+        {
+            if (!await pipeline.ProcessAsync(message.JobId)) break;
+            await queue.CompleteAsync(message);
+        }
     }
 
     private async Task<PowerBiWorld> BuildAsync()
@@ -81,8 +148,9 @@ public sealed class PowerBiFixture : IAsyncLifetime
         });
 
         // lead-a uploads, lead-b releases.
-        (await leadA.PostAsync("/api/acp/projects/muster-2026/versions", Pbix())).EnsureSuccessStatusCode();
-        (await leadB.PostAsJsonAsync("/api/acp/projects/muster-2026/versions/1/release", new { note = "First cut" }))
+        var first = await UploadAsync(leadA, "muster-2026");
+        (await leadB.PostAsJsonAsync(
+            $"/api/acp/projects/muster-2026/versions/{first}/release", new { note = "First cut" }))
             .EnsureSuccessStatusCode();
 
         // A second client, provisioned but with nothing released, to reach across to.
@@ -169,6 +237,15 @@ public sealed class PowerBiFixture : IAsyncLifetime
         ["Auth:InviteRedirectUrl"] = "http://localhost/",
         ["PowerBi:Mode"] = "Fake",
 
+        // Its own container and queue, so a test run and a dev server pointed at the same
+        // Azurite cannot drain each other's work.
+        ["Storage:UploadsContainer"] = "test-pbix-uploads",
+        ["Storage:ImportQueue"] = "test-pbix-imports",
+
+        // Small enough that a test can exceed it with a couple of megabytes rather than a real
+        // Databook, and large enough that every other test is unaffected.
+        ["Storage:MaxUploadMegabytes"] = "1",
+
         ["Auth:Development:Accounts:0:Key"] = "lead-a",
         ["Auth:Development:Accounts:0:ObjectId"] = "oid-lead-a",
         ["Auth:Development:Accounts:0:Email"] = "lead.a@acp.test",
@@ -181,6 +258,20 @@ public sealed class PowerBiFixture : IAsyncLifetime
         ["Auth:Development:Accounts:1:DisplayName"] = "Lead B",
         ["Auth:Development:Accounts:1:Guest"] = "false",
     };
+}
+
+/// <summary>
+/// Both Power BI suites share one fixture, and therefore one database and one world.
+/// </summary>
+/// <remarks>
+/// An <c>IClassFixture</c> is built once per test <i>class</i>, so two classes asking for this
+/// would each drop and recreate the same database — in parallel. A collection fixture is built
+/// once for all of them, and xunit runs a collection's classes one after another.
+/// </remarks>
+[CollectionDefinition(Name)]
+public sealed class PowerBiCollection : ICollectionFixture<PowerBiFixture>
+{
+    public const string Name = "power-bi";
 }
 
 public sealed record PowerBiWorld(

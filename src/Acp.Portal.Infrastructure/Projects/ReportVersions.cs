@@ -3,8 +3,10 @@ using Acp.Portal.Domain;
 using Acp.Portal.Domain.Abstractions;
 using Acp.Portal.Domain.Entities;
 using Acp.Portal.Infrastructure.Data;
+using Acp.Portal.Infrastructure.Staging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Acp.Portal.Infrastructure.Projects;
 
@@ -13,11 +15,10 @@ namespace Acp.Portal.Infrastructure.Projects;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Importing here streams the file straight to Power BI. Phase 5 replaces that with the real
-/// pipeline — a write-only SAS to private Blob storage, a queue, a background worker, and the
-/// XMLA template checks — and this class keeps the release half unchanged. The direct path is
-/// honest about itself: <c>BlobPath</c> records <c>direct://</c> so no later migration mistakes
-/// these rows for staged ones.
+/// Uploading is two requests and a direct browser-to-Blob transfer in between. The portal hands
+/// out a write-only URL for one blob, the browser uses it, and the portal is told when that is
+/// done — at which point a queue message makes it somebody else's problem. The file itself never
+/// passes through this process, which is what keeps a 200 MB upload off the request pipeline.
 /// </para>
 /// <para>
 /// Release is the four-eyes rule, and it is a database transaction rather than two updates,
@@ -27,11 +28,15 @@ namespace Acp.Portal.Infrastructure.Projects;
 /// </remarks>
 public sealed class ReportVersions(
     PortalDbContext db,
-    IPowerBiClient powerBi,
+    PbixStaging staging,
+    ImportQueue queue,
+    IOptions<StorageOptions> storage,
     TimeProvider clock,
     ILogger<ReportVersions> logger)
 {
     private static readonly ProjectRole[] MayUpload = [ProjectRole.Lead, ProjectRole.Member];
+
+    private readonly StorageOptions _storage = storage.Value;
 
     /// <summary>Null when the project is not visible to the caller.</summary>
     public async Task<IReadOnlyList<ReportVersionView>?> ListAsync(
@@ -56,10 +61,17 @@ public sealed class ReportVersions(
             .ToListAsync(cancellationToken);
     }
 
-    /// <summary>Null when the project is not visible to the caller.</summary>
-    public async Task<ReportVersionView?> ImportAsync(
+    /// <summary>
+    /// Reserves the next version number and hands back a URL the browser can upload to.
+    /// Null when the project is not visible to the caller.
+    /// </summary>
+    /// <remarks>
+    /// The row is created before the file exists, in <see cref="ReportVersionState.Importing"/>.
+    /// That is deliberate: it is what reserves the version number, and it means an upload that
+    /// is started and abandoned is visible as an abandoned upload rather than invisible.
+    /// </remarks>
+    public async Task<StagedVersion?> StageAsync(
         string projectKey,
-        Stream content,
         string fileName,
         Guid actingUser,
         CancellationToken cancellationToken = default)
@@ -73,6 +85,11 @@ public sealed class ReportVersions(
         await RequireRoleAsync(project.Id, actingUser, MayUpload,
             "Only a lead or a member on this project can upload a Databook.", cancellationToken);
 
+        if (!fileName.EndsWith(".pbix", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new PortalRuleException("A Databook is a .pbix file.");
+        }
+
         var client = project.Client!;
         if (!client.IsProvisioned)
         {
@@ -80,54 +97,116 @@ public sealed class ReportVersions(
                 $"{client.Name} has no Power BI workspace yet. Provision the client first.");
         }
 
-        var nextVersion = await db.ReportVersions
+        var nextVersion = (await db.ReportVersions
             .Where(v => v.ProjectId == project.Id)
             .Select(v => (int?)v.Version)
-            .MaxAsync(cancellationToken) ?? 0;
-
-        nextVersion++;
-
-        var import = await powerBi.ImportReportAsync(
-            new PowerBiImportRequest(
-                client.PowerBiProfileId!,
-                client.PowerBiWorkspaceId!,
-                $"{project.Key} v{nextVersion}",
-                content,
-                fileName),
-            cancellationToken);
+            .MaxAsync(cancellationToken) ?? 0) + 1;
 
         var now = clock.GetUtcNow();
+        var versionId = Guid.NewGuid();
+        var blobPath = PbixStaging.BlobPathFor(project.Key, nextVersion, versionId, fileName);
 
-        var version = new ReportVersion
+        db.ReportVersions.Add(new ReportVersion
         {
-            Id = Guid.NewGuid(),
+            Id = versionId,
             ProjectId = project.Id,
             Version = nextVersion,
-            // Phase 5 stages uploads in private Blob storage and this becomes a real path.
-            BlobPath = $"direct://{fileName}",
-            PowerBiReportId = import.ReportId,
-            PowerBiDatasetId = import.DatasetId,
-            State = ReportVersionState.Draft,
+            BlobPath = blobPath,
+            State = ReportVersionState.Importing,
             UploadedBy = actingUser,
             UploadedAt = now,
-        };
+        });
 
-        db.ReportVersions.Add(version);
         db.AuditEvents.Add(new AuditEvent
         {
             At = now,
             UserId = actingUser,
-            Action = "version.imported",
+            Action = "version.staged",
             ProjectId = project.Id,
-            Detail = JsonSerializer.Serialize(new { version = nextVersion, fileName, reportId = import.ReportId }),
+            Detail = JsonSerializer.Serialize(new { version = nextVersion, fileName }),
         });
 
         await db.SaveChangesAsync(cancellationToken);
 
-        logger.LogInformation("Imported {Project} v{Version} as report {Report}.",
-            project.Key, nextVersion, import.ReportId);
+        var upload = await staging.AuthorizeUploadAsync(blobPath, cancellationToken);
 
-        return (await ListAsync(projectKey, cancellationToken))!.First(v => v.Version == nextVersion);
+        logger.LogInformation("Staged {Project} v{Version} for upload.", project.Key, nextVersion);
+
+        return new StagedVersion(versionId, nextVersion, upload.UploadUrl, upload.ExpiresAt, upload.MaxMegabytes);
+    }
+
+    /// <summary>
+    /// Told that the browser finished. Checks the file is really there, then queues the import.
+    /// Null when the project or the upload is not visible to the caller.
+    /// </summary>
+    public async Task<ReportVersionView?> CompleteAsync(
+        string projectKey,
+        Guid uploadId,
+        Guid actingUser,
+        CancellationToken cancellationToken = default)
+    {
+        var project = await db.Projects.FirstOrDefaultAsync(p => p.Key == projectKey, cancellationToken);
+        if (project is null) return null;
+
+        await RequireRoleAsync(project.Id, actingUser, MayUpload,
+            "Only a lead or a member on this project can upload a Databook.", cancellationToken);
+
+        var version = await db.ReportVersions
+            .FirstOrDefaultAsync(v => v.Id == uploadId && v.ProjectId == project.Id, cancellationToken);
+
+        if (version is null) return null;
+
+        if (version.State != ReportVersionState.Importing)
+        {
+            throw new PortalRuleException($"Version {version.Version} has already been imported.");
+        }
+
+        // The browser says it finished; the storage account is what decides. A SAS that was
+        // issued and never used leaves no blob, and that is the common case here — somebody
+        // closed the tab.
+        var size = await staging.SizeAsync(version.BlobPath, cancellationToken)
+            ?? throw new PortalRuleException(
+                "The file did not arrive. Try the upload again — the link lasts about twenty minutes.");
+
+        var limit = (long)_storage.MaxUploadMegabytes * 1024 * 1024;
+        if (size > limit)
+        {
+            await staging.DiscardAsync(version.BlobPath, cancellationToken);
+
+            throw new PortalRuleException(
+                $"That file is {size / 1024 / 1024} MB and the limit is {_storage.MaxUploadMegabytes} MB.");
+        }
+
+        var now = clock.GetUtcNow();
+
+        var job = new UploadJob
+        {
+            Id = Guid.NewGuid(),
+            ReportVersionId = version.Id,
+            State = UploadJobState.Queued,
+            CreatedAt = now,
+        };
+
+        // One job per version — a unique index says so — so a consultant double-clicking
+        // "done" cannot start two imports of the same file.
+        db.UploadJobs.Add(job);
+        db.AuditEvents.Add(new AuditEvent
+        {
+            At = now,
+            UserId = actingUser,
+            Action = "version.uploaded",
+            ProjectId = project.Id,
+            Detail = JsonSerializer.Serialize(new { version = version.Version, bytes = size }),
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+        await queue.EnqueueAsync(job.Id, cancellationToken);
+
+        logger.LogInformation(
+            "{Project} v{Version} uploaded ({Bytes} bytes) and queued for import.",
+            project.Key, version.Version, size);
+
+        return (await ListAsync(projectKey, cancellationToken))!.First(v => v.Version == version.Version);
     }
 
     /// <summary>
@@ -250,6 +329,14 @@ public sealed class ReportVersions(
         if (role is null || !allowed.Contains(role.Value)) throw new PortalRuleException(refusal);
     }
 }
+
+/// <param name="UploadUrl">Write-only, one blob, about twenty minutes. See <c>PbixStaging</c>.</param>
+public sealed record StagedVersion(
+    Guid UploadId,
+    int Version,
+    Uri UploadUrl,
+    DateTimeOffset ExpiresAt,
+    int MaxMegabytes);
 
 public sealed record ReportVersionView(
     int Version,

@@ -22,13 +22,14 @@ namespace Acp.Portal.Tests;
 /// needs a capacity to check.
 /// </para>
 /// </remarks>
-public sealed class PowerBiTests(PowerBiFixture fixture) : IClassFixture<PowerBiFixture>
+[Collection(PowerBiCollection.Name)]
+public sealed class PowerBiTests(PowerBiFixture fixture)
 {
     private PowerBiWorld World => fixture.World;
 
     // ------------------------------------------------------------ what each person gets
 
-    [RequiresSqlFact]
+    [RequiresLocalServicesFact]
     public async Task AClientGetsTheReleasedVersionFilteredToTheirOwnCompanies()
     {
         using var anna = await fixture.SignedInAsync(World.AnnaKey);
@@ -48,7 +49,7 @@ public sealed class PowerBiTests(PowerBiFixture fixture) : IClassFixture<PowerBi
         Assert.DoesNotContain("M02", issued);
     }
 
-    [RequiresSqlFact]
+    [RequiresLocalServicesFact]
     public async Task AConsultantSeesTheFilterTheyAreLookingThrough()
     {
         using var lead = await fixture.SignedInAsync("lead-a");
@@ -60,7 +61,7 @@ public sealed class PowerBiTests(PowerBiFixture fixture) : IClassFixture<PowerBi
         Assert.Equal("lead.a@acp.test", scope.GetProperty("username").GetString());
     }
 
-    [RequiresSqlFact]
+    [RequiresLocalServicesFact]
     public async Task ViewAsPutsAConsultantBehindTheClientsOwnFilter()
     {
         using var lead = await fixture.SignedInAsync("lead-a");
@@ -77,7 +78,7 @@ public sealed class PowerBiTests(PowerBiFixture fixture) : IClassFixture<PowerBi
 
     // ------------------------------------------------------------ who may ask for what
 
-    [RequiresSqlFact]
+    [RequiresLocalServicesFact]
     public async Task AClientCannotReachAnotherClientsReport()
     {
         using var anna = await fixture.SignedInAsync(World.AnnaKey);
@@ -87,7 +88,7 @@ public sealed class PowerBiTests(PowerBiFixture fixture) : IClassFixture<PowerBi
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    [RequiresSqlFact]
+    [RequiresLocalServicesFact]
     public async Task AConsultantCannotPreviewAsSomebodyFromAnotherProject()
     {
         using var lead = await fixture.SignedInAsync("lead-a");
@@ -99,7 +100,7 @@ public sealed class PowerBiTests(PowerBiFixture fixture) : IClassFixture<PowerBi
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
-    [RequiresSqlFact]
+    [RequiresLocalServicesFact]
     public async Task AConsultantCannotPreviewAsAnotherConsultant()
     {
         using var lead = await fixture.SignedInAsync("lead-a");
@@ -109,7 +110,7 @@ public sealed class PowerBiTests(PowerBiFixture fixture) : IClassFixture<PowerBi
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
-    [RequiresSqlFact]
+    [RequiresLocalServicesFact]
     public async Task AClientCannotPreviewAsAnybody()
     {
         using var anna = await fixture.SignedInAsync(World.AnnaKey);
@@ -119,7 +120,7 @@ public sealed class PowerBiTests(PowerBiFixture fixture) : IClassFixture<PowerBi
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
-    [RequiresSqlFact]
+    [RequiresLocalServicesFact]
     public async Task NothingReleasedYetIsAnOrdinaryAnswer()
     {
         using var tom = await fixture.SignedInAsync(World.TomKey);
@@ -133,7 +134,7 @@ public sealed class PowerBiTests(PowerBiFixture fixture) : IClassFixture<PowerBi
 
     // ------------------------------------------------------------ the audit log
 
-    [RequiresSqlFact]
+    [RequiresLocalServicesFact]
     public async Task TheTokenItselfIsNeverWrittenDown()
     {
         using var lead = await fixture.SignedInAsync("lead-a");
@@ -152,16 +153,12 @@ public sealed class PowerBiTests(PowerBiFixture fixture) : IClassFixture<PowerBi
 
     // ------------------------------------------------------------ release
 
-    [RequiresSqlFact]
+    [RequiresLocalServicesFact]
     public async Task TheUploaderCannotReleaseTheirOwnVersion()
     {
         using var leadA = await fixture.SignedInAsync("lead-a");
 
-        var upload = await leadA.PostAsync("/api/acp/projects/muster-2026/versions", PowerBiFixture.Pbix());
-        upload.EnsureSuccessStatusCode();
-
-        var version = (await upload.Content.ReadFromJsonAsync<JsonElement>())
-            .GetProperty("version").GetInt32();
+        var version = await fixture.UploadAsync(leadA, "muster-2026");
 
         var response = await leadA.PostAsJsonAsync(
             $"/api/acp/projects/muster-2026/versions/{version}/release", new { note = "mine" });
@@ -170,17 +167,13 @@ public sealed class PowerBiTests(PowerBiFixture fixture) : IClassFixture<PowerBi
         Assert.Contains("somebody else", await response.Content.ReadAsStringAsync());
     }
 
-    [RequiresSqlFact]
+    [RequiresLocalServicesFact]
     public async Task ReleasingSupersedesWhateverWasReleasedBefore()
     {
         using var leadA = await fixture.SignedInAsync("lead-a");
         using var leadB = await fixture.SignedInAsync("lead-b");
 
-        var upload = await leadB.PostAsync("/api/acp/projects/muster-2026/versions", PowerBiFixture.Pbix());
-        upload.EnsureSuccessStatusCode();
-
-        var version = (await upload.Content.ReadFromJsonAsync<JsonElement>())
-            .GetProperty("version").GetInt32();
+        var version = await fixture.UploadAsync(leadB, "muster-2026");
 
         (await leadA.PostAsJsonAsync(
             $"/api/acp/projects/muster-2026/versions/{version}/release", new { note = "Newer" }))
@@ -196,15 +189,13 @@ public sealed class PowerBiTests(PowerBiFixture fixture) : IClassFixture<PowerBi
         Assert.Single(states.Values, s => s == "Released");
     }
 
-    [RequiresSqlFact]
+    [RequiresLocalServicesFact]
     public async Task AVersionCannotBeReleasedTwice()
     {
         using var leadA = await fixture.SignedInAsync("lead-a");
         using var leadB = await fixture.SignedInAsync("lead-b");
 
-        var upload = await leadB.PostAsync("/api/acp/projects/muster-2026/versions", PowerBiFixture.Pbix());
-        var version = (await upload.Content.ReadFromJsonAsync<JsonElement>())
-            .GetProperty("version").GetInt32();
+        var version = await fixture.UploadAsync(leadB, "muster-2026");
 
         (await leadA.PostAsJsonAsync($"/api/acp/projects/muster-2026/versions/{version}/release", new { }))
             .EnsureSuccessStatusCode();
@@ -217,7 +208,7 @@ public sealed class PowerBiTests(PowerBiFixture fixture) : IClassFixture<PowerBi
 
     // ------------------------------------------------------------ provisioning
 
-    [RequiresSqlFact]
+    [RequiresLocalServicesFact]
     public async Task ProvisioningTwiceIsRefused()
     {
         using var lead = await fixture.SignedInAsync("lead-a");
@@ -229,7 +220,7 @@ public sealed class PowerBiTests(PowerBiFixture fixture) : IClassFixture<PowerBi
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
-    [RequiresSqlFact]
+    [RequiresLocalServicesFact]
     public async Task AnUnprovisionedClientCannotTakeAnUpload()
     {
         using var lead = await fixture.SignedInAsync("lead-a");
@@ -247,14 +238,14 @@ public sealed class PowerBiTests(PowerBiFixture fixture) : IClassFixture<PowerBi
             name = "Unprovisioned 2026",
         });
 
-        var response = await lead.PostAsync(
-            "/api/acp/projects/unprovisioned-2026/versions", PowerBiFixture.Pbix());
+        var response = await lead.PostAsJsonAsync(
+            "/api/acp/projects/unprovisioned-2026/uploads", new { fileName = "databook.pbix" });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Contains("workspace", await response.Content.ReadAsStringAsync());
     }
 
-    [RequiresSqlFact]
+    [RequiresLocalServicesFact]
     public async Task ACompanyCodeWithASpaceIsRefusedWhenTheClientIsCreated()
     {
         using var lead = await fixture.SignedInAsync("lead-a");

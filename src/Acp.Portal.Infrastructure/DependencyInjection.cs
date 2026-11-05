@@ -2,6 +2,9 @@ using Acp.Portal.Domain.Abstractions;
 using Acp.Portal.Infrastructure.Data;
 using Acp.Portal.Infrastructure.PowerBi;
 using Acp.Portal.Infrastructure.Projects;
+using Acp.Portal.Infrastructure.Staging;
+using Azure.Storage.Blobs;
+using Azure.Storage.Queues;
 using Acp.Portal.Infrastructure.Identity;
 using Azure.Core;
 using Azure.Identity;
@@ -144,6 +147,7 @@ public static class DependencyInjection
         if (powerBi.Mode == PowerBiMode.Live)
         {
             services.TryAddSingleton(_ => CreateCredential(configuration));
+            services.AddScoped<IModelInspector, XmlaModelInspector>();
 
             services.AddHttpClient<IPowerBiClient, PowerBiRestClient>(http =>
             {
@@ -156,11 +160,60 @@ public static class DependencyInjection
         else
         {
             services.AddScoped<IPowerBiClient, FakePowerBiClient>();
+            services.AddScoped<IModelInspector, FakeModelInspector>();
         }
 
         services.AddScoped<ClientProvisioning>();
         services.AddScoped<ReportVersions>();
         services.AddScoped<EmbedTokens>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Blob staging and the import queue. Call it after <see cref="AddPortalInfrastructure"/>.
+    /// </summary>
+    /// <remarks>
+    /// A connection string means Azurite and nothing else: the deployed storage account sets
+    /// <c>allowSharedKeyAccess: false</c>, so there is no key there to put in one. In Azure the
+    /// account is addressed by URL and reached with the portal's managed identity.
+    /// </remarks>
+    public static IServiceCollection AddPortalStaging(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddOptions<StorageOptions>()
+            .Bind(configuration.GetSection(StorageOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        var storage = configuration.GetSection(StorageOptions.SectionName).Get<StorageOptions>() ?? new();
+
+        if (storage.UsesSharedKey)
+        {
+            services.AddSingleton(_ => new BlobServiceClient(storage.ConnectionString));
+            services.AddSingleton(_ => new QueueServiceClient(storage.ConnectionString));
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(storage.BlobAccountUrl) || string.IsNullOrWhiteSpace(storage.QueueAccountUrl))
+            {
+                throw new InvalidOperationException(
+                    "Storage:BlobAccountUrl and Storage:QueueAccountUrl must be set when there is no "
+                    + "connection string. Locally, set Storage:ConnectionString to "
+                    + "'UseDevelopmentStorage=true' and run scripts/dev-up.sh.");
+            }
+
+            services.TryAddSingleton(_ => CreateCredential(configuration));
+            services.AddSingleton(sp => new BlobServiceClient(
+                new Uri(storage.BlobAccountUrl), sp.GetRequiredService<TokenCredential>()));
+            services.AddSingleton(sp => new QueueServiceClient(
+                new Uri(storage.QueueAccountUrl), sp.GetRequiredService<TokenCredential>()));
+        }
+
+        services.AddScoped<PbixStaging>();
+        services.AddScoped<ImportQueue>();
+        services.AddScoped<UploadPipeline>();
 
         return services;
     }

@@ -50,7 +50,7 @@ attacks alone; together they cover a bug in any one of them.
 | Automation | **13 of 22** lifecycle steps run by themselves |
 | Steps for the platform owner per project | **0** — support only |
 
-**Status of the code:** Phases 1–4 built; Gate 1 not yet passed. See
+**Status of the code:** Phases 1–5 built; Gate 1 not yet passed. See
 [Running it locally](#running-it-locally) — it runs today with no Azure account, no Microsoft
 tenant and no Fabric capacity.
 
@@ -76,9 +76,11 @@ open docs/source/wireframe.html
 
 ## Running it locally
 
-Currently at **Phase 4** — Power BI. Consultants provision a client, upload a Databook, release
-it (somebody else has to), preview it as any of their clients, and clients open their own. Power
-BI itself is simulated unless you give it a capacity.
+Currently at **Phase 5** — uploads. A consultant drops a `.pbix`; it goes straight from the
+browser into private storage, a background worker imports it and checks it against the Databook
+template, and it comes back either a draft or refused with a sentence saying what to fix. A
+different lead releases it, and clients see the new version. Power BI itself is simulated unless
+you give it a capacity.
 
 ```bash
 scripts/dev-up.sh                 # colima + SQL Server + Azurite, waits until SQL is ready
@@ -90,7 +92,7 @@ npm --prefix web run dev                    # http://localhost:5173
 Then open <http://localhost:5173> and pick somebody from the account picker.
 
 ```bash
-dotnet build && dotnet test       # 92 tests; 28 need SQL and skip without it
+dotnet build && dotnet test       # 120 tests; 54 need the containers and skip without them
 scripts/dev-down.sh               # --clean also drops the data volumes
 ```
 
@@ -156,6 +158,33 @@ the token's scope — report, model, workspace, role, identity, companies, expir
 is the part being exercised, and a screen that looked like a working report would be the most
 expensive kind of wrong.
 
+### How an upload travels
+
+```
+browser ──PUT──▶ private Blob container          (write-only SAS: one blob, ~20 minutes)
+   │
+   └─▶ POST …/uploads/{id}/complete ──▶ queue ──▶ import worker
+                                                    ├─ import into the client's workspace
+                                                    ├─ read the model over XMLA
+                                                    ├─ check it against the template
+                                                    ├─ Draft, or CheckFailed + a sentence
+                                                    └─ delete the staged copy
+```
+
+The file never passes through the web app, which keeps a 200 MB Databook off the request
+pipeline. The price is handing the browser a credential, so it is as small as one can be: it
+can create and write **one** named blob for **twenty minutes**, and cannot read, list or delete
+anything. A refused file is deleted from staging too — it is still a client's data.
+
+The worker runs inside the API process, not in an Azure Function (§1.4). The queue's visibility
+timeout is its lock, so a deployment mid-import hands the job back rather than losing it, and
+every job is idempotent because a queue only promises at-least-once.
+
+To see a check fail without a capacity, upload a file whose name contains `no-client-role`,
+`old-template`, `no-companies`, `extra-company` or `unfiltered`. The simulated inspector
+describes a model broken in exactly that way, so every refusal message is reachable from the
+upload screen.
+
 ### How the database decides what you can see
 
 Every connection is stamped with who is asking, and SQL Server filters `Projects` and
@@ -206,11 +235,14 @@ install — deleting that one line makes the workaround unnecessary.
 - **The browser bundle is 428 kB** (102 kB gzipped), most of it `powerbi-client`. It is loaded
   on every screen including the ones with no report on them. A dynamic import in `ReportView`
   would fix that; Phase 6 rebuilds this UI anyway.
-- **Phase 4 uploads stream straight to Power BI.** Phase 5 replaces that with private Blob
-  staging, a queue and the XMLA template checks. Rows created the Phase 4 way record
-  `direct://` in `BlobPath` so they are easy to tell apart.
-- **Nothing in the Power BI client has ever run against Power BI.** The shapes most likely to be
-  wrong are listed in [docs/implementation-plan.md](docs/implementation-plan.md) under Phase 4.
+- **Nothing in the Power BI client or the XMLA inspector has ever run against Power BI.** Both
+  compile against the real APIs; neither has met the real service. What is most likely to be
+  wrong is listed in [docs/implementation-plan.md](docs/implementation-plan.md) under Phases 4
+  and 5.
+- **The template checks follow the wireframe, not the template.** Table `Companies`, column
+  `Ges.`, measure `Template Version`, roles `Client` and `ACP` — and ACP-only tables recognised
+  by a name starting `ACP`, which is a guess. All of it is configuration under `PowerBi:`, so
+  when Sejal's real template (D6) arrives, expect to change values rather than code.
 
 ## Hard constraints
 

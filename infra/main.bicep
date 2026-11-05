@@ -125,7 +125,8 @@ resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01'
     deleteRetentionPolicy: { enabled: true, days: 7 }
     cors: {
       // The browser uploads straight to Blob with a short-lived write-only SAS, so the storage
-      // account has to allow it. Phase 5 narrows allowedOrigins to the deployed portal.
+      // account has to allow it — from the deployed portal's own origin and nowhere else. The
+      // local Azurite gets the equivalent rule from the API at startup, in Development only.
       corsRules: [
         {
           allowedOrigins: ['https://${prefix}-app.azurewebsites.net']
@@ -143,6 +144,18 @@ resource uploadsContainer 'Microsoft.Storage/storageAccounts/blobServices/contai
   parent: blobService
   name: 'pbix-uploads'
   properties: { publicAccess: 'None' }
+}
+
+resource queueService 'Microsoft.Storage/storageAccounts/queueServices@2023-05-01' = {
+  parent: storage
+  name: 'default'
+}
+
+// Import jobs. The worker's lock is this queue's visibility timeout, so a worker that dies
+// mid-import hands the job back by doing nothing.
+resource importQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-05-01' = {
+  parent: queueService
+  name: 'pbix-imports'
 }
 
 // --- Secrets and monitoring --------------------------------------------------------------------

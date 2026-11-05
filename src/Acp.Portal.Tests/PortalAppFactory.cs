@@ -51,6 +51,16 @@ internal sealed class PortalAppFactory(
 
         builder.ConfigureServices(services =>
         {
+            // The import worker polls the queue on its own schedule. Tests drive the pipeline
+            // explicitly so that "the file was imported" is something a test caused rather than
+            // something it waited for.
+            foreach (var hosted in services
+                         .Where(d => d.ImplementationType?.Name == "UploadWorker")
+                         .ToList())
+            {
+                services.Remove(hosted);
+            }
+
             if (connectionString is not null)
             {
                 // Leave the real registration alone, interceptor and all: stamping the

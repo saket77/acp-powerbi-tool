@@ -48,24 +48,39 @@ const post = <T,>(path: string, body: unknown) => send<T>('POST', path, body)
 const del = (path: string) => send<void>('DELETE', path)
 
 /**
- * Multipart upload. No Content-Type header on purpose — the browser has to set it itself so it
- * can include the multipart boundary, and naming it here would produce a request the server
- * cannot parse.
+ * Puts a file straight into Blob storage with the write-only URL the portal issued.
+ *
+ * Deliberately XMLHttpRequest rather than fetch: fetch cannot report upload progress, and a
+ * Databook is tens or hundreds of megabytes. A consultant watching a bar is a consultant who
+ * does not close the tab halfway through.
+ *
+ * This is the one request in the application that does not go to our own API, which is the
+ * whole point — the file never passes through the web app.
  */
-async function postFile<T>(path: string, file: File): Promise<T> {
-  const form = new FormData()
-  form.append('file', file)
+export function uploadToBlob(
+  url: string,
+  file: File,
+  onProgress: (fraction: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest()
+    request.open('PUT', url)
+    request.setRequestHeader('x-ms-blob-type', 'BlockBlob')
 
-  const response = await fetch(path, {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: json,
-    body: form,
+    request.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(event.loaded / event.total)
+    }
+
+    request.onload = () =>
+      request.status >= 200 && request.status < 300
+        ? resolve()
+        : reject(new ApiError(request.status, `Storage refused the upload (${request.status}).`))
+
+    request.onerror = () => reject(new ApiError(0, 'The upload could not reach storage.'))
+    request.onabort = () => reject(new ApiError(0, 'The upload was cancelled.'))
+
+    request.send(file)
   })
-
-  if (!response.ok) throw new ApiError(response.status, await describe(response))
-
-  return (await response.json()) as T
 }
 
 /**
@@ -248,6 +263,15 @@ export interface ReportVersionView {
   checkFailureMessage: string | null
 }
 
+export interface StagedUpload {
+  uploadId: string
+  version: number
+  /** Write-only, one blob, about twenty minutes. Never logged, never stored. */
+  uploadUrl: string
+  expiresAt: string
+  maxMegabytes: number
+}
+
 export interface EmbedScope {
   workspaceId: string
   datasetId: string
@@ -307,8 +331,13 @@ export const api = {
 
   versions: (projectKey: string) =>
     get<ReportVersionView[]>(`/api/acp/projects/${encodeURIComponent(projectKey)}/versions`),
-  uploadVersion: (projectKey: string, file: File) =>
-    postFile<ReportVersionView>(`/api/acp/projects/${encodeURIComponent(projectKey)}/versions`, file),
+  startUpload: (projectKey: string, fileName: string) =>
+    post<StagedUpload>(`/api/acp/projects/${encodeURIComponent(projectKey)}/uploads`, { fileName }),
+  completeUpload: (projectKey: string, uploadId: string) =>
+    post<ReportVersionView>(
+      `/api/acp/projects/${encodeURIComponent(projectKey)}/uploads/${uploadId}/complete`,
+      {},
+    ),
   releaseVersion: (projectKey: string, version: number, note: string) =>
     post<ReportVersionView>(
       `/api/acp/projects/${encodeURIComponent(projectKey)}/versions/${version}/release`,

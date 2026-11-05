@@ -38,7 +38,7 @@ function Portal() {
               ACP Databook Portal
             </a>
           </h1>
-          <p>Phase 4 — Power BI. Provisioning, embed tokens and the player.</p>
+          <p>Phase 5 — uploads. Staged to private storage, imported in the background, checked against the template.</p>
         </div>
         {version && (
           <span className="badge">

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, type ReportVersionView } from '../api'
+import { api, uploadToBlob, type ReportVersionView } from '../api'
 import { StateBoundary, type LoadState } from '../shared/LoadState'
 
 /**
@@ -14,6 +14,7 @@ export function VersionsPanel({ projectKey, onReleased }: { projectKey: string; 
   const [versions, setVersions] = useState<ReportVersionView[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [progress, setProgress] = useState<number | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
@@ -30,18 +31,59 @@ export function VersionsPanel({ projectKey, onReleased }: { projectKey: string; 
     void load()
   }, [load])
 
+  /**
+   * Three steps and a wait: ask the portal for somewhere to put the file, put it there, tell
+   * the portal it arrived, then watch for the import and the template checks to finish.
+   */
   async function upload(file: File) {
     setBusy(true)
     setError(null)
+    setProgress(0)
+
     try {
-      await api.uploadVersion(projectKey, file)
+      const staged = await api.startUpload(projectKey, file.name)
+
+      if (file.size > staged.maxMegabytes * 1024 * 1024) {
+        // Checked here as well as on the server, because finding out after sending 400 MB is a
+        // bad way to find out.
+        throw new Error(
+          `That file is ${Math.round(file.size / 1024 / 1024)} MB and the limit is ${staged.maxMegabytes} MB.`,
+        )
+      }
+
+      await uploadToBlob(staged.uploadUrl, file, setProgress)
+      await api.completeUpload(projectKey, staged.uploadId)
+
       if (fileInput.current) fileInput.current.value = ''
-      await load()
+      setProgress(null)
+      await waitForImport(staged.version)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Could not upload that file.')
     } finally {
       setBusy(false)
+      setProgress(null)
     }
+  }
+
+  /**
+   * The import runs on a queue, so the answer arrives a few seconds after the upload does.
+   * Polling rather than pushing: this is one screen, watched by one person, for under a minute.
+   */
+  async function waitForImport(version: number) {
+    const deadline = Date.now() + 3 * 60 * 1000
+
+    while (Date.now() < deadline) {
+      const all = await api.versions(projectKey)
+      setVersions(all)
+      setState({ kind: 'ready' })
+
+      const row = all.find((v) => v.version === version)
+      if (row && row.state !== 'Importing') return
+
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+    }
+
+    setError('The import is taking longer than expected. The page will catch up when it finishes.')
   }
 
   async function release(version: number) {
@@ -62,8 +104,9 @@ export function VersionsPanel({ projectKey, onReleased }: { projectKey: string; 
     <section className="card">
       <h2>Databook versions</h2>
       <p className="hint">
-        Uploading creates a draft only you and other ACP people can see. A different lead has to
-        release it before any client does.
+        The file goes straight to private storage and is imported in the background, then checked
+        against the Databook template. What comes out is a draft only ACP can see — and a
+        different lead has to release it before any client does.
       </p>
 
       <div className="row">
@@ -78,7 +121,13 @@ export function VersionsPanel({ projectKey, onReleased }: { projectKey: string; 
             if (file) void upload(file)
           }}
         />
-        {busy && <span className="hint">Working…</span>}
+        {busy && progress !== null && (
+          <>
+            <progress value={progress} max={1} aria-label="Upload progress" />
+            <span className="hint">{Math.round(progress * 100)}% uploaded</span>
+          </>
+        )}
+        {busy && progress === null && <span className="hint">Importing and checking…</span>}
       </div>
       {error && <p className="error">{error}</p>}
 
@@ -100,7 +149,7 @@ export function VersionsPanel({ projectKey, onReleased }: { projectKey: string; 
                   <td>v{version.version}</td>
                   <td>
                     <span className={version.state === 'Released' ? 'badge staff' : 'badge'}>
-                      {version.state}
+                      {version.state === 'Importing' ? 'Checking…' : version.state}
                     </span>
                     {version.checkFailureMessage && (
                       <p className="error" style={{ margin: '0.25rem 0 0' }}>

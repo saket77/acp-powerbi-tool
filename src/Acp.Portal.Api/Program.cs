@@ -2,11 +2,13 @@ using System.Text.Json;
 using Acp.Portal.Api;
 using Acp.Portal.Api.Auth;
 using Acp.Portal.Api.Endpoints;
+using Acp.Portal.Api.Workers;
 using Acp.Portal.Domain.Abstractions;
 using Acp.Portal.Infrastructure;
 using Acp.Portal.Infrastructure.Data;
 using Acp.Portal.Infrastructure.Identity;
 using Acp.Portal.Infrastructure.PowerBi;
+using Acp.Portal.Infrastructure.Staging;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,6 +37,8 @@ builder.Services.AddPortalInfrastructure(builder.Configuration);
 builder.Services.AddPortalIdentity(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddPortalAuthentication(builder.Configuration, builder.Environment);
 builder.Services.AddPortalPowerBi(builder.Configuration, builder.Environment.IsDevelopment());
+builder.Services.AddPortalStaging(builder.Configuration);
+builder.Services.AddHostedService<UploadWorker>();
 
 builder.Services
     .AddHealthChecks()
@@ -65,6 +69,16 @@ app.UseAuthorization();
 var powerBiMode = builder.Configuration
     .GetSection(PowerBiOptions.SectionName)
     .GetValue(typeof(PowerBiMode), "Mode") as PowerBiMode? ?? PowerBiMode.Fake;
+
+if (app.Environment.IsDevelopment())
+{
+    // Azurite starts with no CORS rules, so the browser's direct PUT would be refused before it
+    // began. The deployed account gets its rules from infra/main.bicep, where they name the real
+    // origin — doing it from application code there would let a deployment quietly widen them.
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<PbixStaging>()
+        .AllowLocalBrowserUploadsAsync("http://localhost:5173");
+}
 
 if (powerBiMode == PowerBiMode.Fake)
 {
@@ -106,8 +120,8 @@ app.MapHealthChecks("/api/health", new()
 app.MapGet("/api/version", () => Results.Ok(new
 {
     name = "ACP Databook Portal",
-    phase = 4,
-    // Phase 4 adds Power BI: provisioning, imports, embed tokens and the player.
+    phase = 5,
+    // Phase 5 adds the upload pipeline: staged uploads, a queue, a worker and template checks.
     // docs/implementation-plan.md tracks what each phase adds.
     environment = app.Environment.EnvironmentName,
     authMode = authMode.ToString(),
