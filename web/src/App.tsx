@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { api, type VersionInfo } from './api'
+import { api, type SignedIn, type VersionInfo } from './api'
 import { ClientScreen } from './acp/ClientScreen'
 import { ClientsScreen } from './acp/ClientsScreen'
 import { ConsultantHome } from './acp/ConsultantHome'
 import { ProjectScreen } from './acp/ProjectScreen'
 import { ClientHome } from './client/ClientHome'
+import { ClientProjectScreen } from './client/ClientProjectScreen'
 import { SessionProvider, useSession } from './auth/SessionProvider'
 import { SignInGate } from './auth/SignInGate'
 import { IdentityBar } from './shared/IdentityBar'
@@ -37,7 +38,7 @@ function Portal() {
               ACP Databook Portal
             </a>
           </h1>
-          <p>Phase 3 — clients, projects and grants. No Power BI yet.</p>
+          <p>Phase 4 — Power BI. Provisioning, embed tokens and the player.</p>
         </div>
         {version && (
           <span className="badge">
@@ -60,14 +61,25 @@ function Portal() {
       ) : (
         <>
           <IdentityBar session={session} />
-          {session.kind === 'AcpStaff' ? <Consultant /> : <ClientHome session={session} />}
+          {session.kind === 'AcpStaff' ? <Consultant /> : <Client session={session} />}
         </>
       )}
     </>
   )
 }
 
-/** Three screens, chosen by the fragment so a project link can be sent to a colleague. */
+/** A client has two screens: their Databooks, and one of them open. */
+function Client({ session }: { session: SignedIn }) {
+  const [route] = useHashRoute()
+
+  return route.kind === 'project' ? (
+    <ClientProjectScreen projectKey={route.key} />
+  ) : (
+    <ClientHome session={session} />
+  )
+}
+
+/** Four screens, chosen by the fragment so a project link can be sent to a colleague. */
 function Consultant() {
   const [route] = useHashRoute()
 

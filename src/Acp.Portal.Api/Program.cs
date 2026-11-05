@@ -6,6 +6,7 @@ using Acp.Portal.Domain.Abstractions;
 using Acp.Portal.Infrastructure;
 using Acp.Portal.Infrastructure.Data;
 using Acp.Portal.Infrastructure.Identity;
+using Acp.Portal.Infrastructure.PowerBi;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -33,6 +34,7 @@ builder.Services.AddScoped<ICurrentUserAccessor, HttpCurrentUserAccessor>();
 builder.Services.AddPortalInfrastructure(builder.Configuration);
 builder.Services.AddPortalIdentity(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddPortalAuthentication(builder.Configuration, builder.Environment);
+builder.Services.AddPortalPowerBi(builder.Configuration, builder.Environment.IsDevelopment());
 
 builder.Services
     .AddHealthChecks()
@@ -59,6 +61,17 @@ if (!app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+var powerBiMode = builder.Configuration
+    .GetSection(PowerBiOptions.SectionName)
+    .GetValue(typeof(PowerBiMode), "Mode") as PowerBiMode? ?? PowerBiMode.Fake;
+
+if (powerBiMode == PowerBiMode.Fake)
+{
+    app.Logger.LogWarning(
+        "Power BI is simulated. Tokens are issued that nothing honours, so nothing about report "
+        + "isolation is being proved. See Gate 1 in docs/implementation-plan.md.");
+}
 
 if (authMode == AuthMode.Development)
 {
@@ -93,9 +106,9 @@ app.MapHealthChecks("/api/health", new()
 app.MapGet("/api/version", () => Results.Ok(new
 {
     name = "ACP Databook Portal",
-    phase = 3,
-    // Phase 3 adds clients, projects, grants and SQL row-level security.
-    // No Power BI yet. docs/implementation-plan.md tracks what each phase adds.
+    phase = 4,
+    // Phase 4 adds Power BI: provisioning, imports, embed tokens and the player.
+    // docs/implementation-plan.md tracks what each phase adds.
     environment = app.Environment.EnvironmentName,
     authMode = authMode.ToString(),
 })).AllowAnonymous();
@@ -107,6 +120,8 @@ app.MapProjectEndpoints();
 app.MapClientEndpoints();
 app.MapAcpProjectEndpoints();
 app.MapGrantEndpoints();
+app.MapVersionEndpoints();
+app.MapEmbedEndpoints();
 
 app.Run();
 

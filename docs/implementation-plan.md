@@ -109,6 +109,8 @@ What we will lean on:
 | MSAL in the browser | OpenID Connect on the **server**, opaque cookie in the browser | See below | Low — it is one file |
 | — | A second sign-in source for local work | See below | Low — delete two endpoints |
 | Any access change ends the session | Only **removal and narrowing** do | See below | Trivial — one `if` |
+| Power BI .NET SDK | Six typed `HttpClient` calls | Phase 4 above | Low |
+| Release in Phase 5 | Release in Phase 4 | Gate 1 needs it | None — it moved earlier, not later |
 
 **Why the sign-in moved to the server** (added in Phase 2). The plan said MSAL in the browser
 *and* an HttpOnly cookie, and the wireframe's rule that no token is visible in the browser. All
@@ -385,7 +387,7 @@ itself added and knows nothing about a security policy, so no query can check wh
 key is taken by a project the caller cannot see. The unique index is the only thing that knows,
 which is why key clashes are caught from the database error rather than pre-checked.
 
-### Phase 4 — Power BI, and the gate · *me + your capacity*
+### Phase 4 — Power BI, and the gate · *me + your capacity* — **code built, gate not passed**
 
 **This is the phase that decides whether the design is real.** Resume the capacity (D5).
 
@@ -408,6 +410,51 @@ which is why key clashes are caught from the database error rather than pre-chec
 
 If the last one fails, we switch to `CUSTOMDATA()` and the template's filter changes. Better to
 find out in Phase 4 than in front of partners.
+
+#### Status: built, and not once run against Power BI
+
+Everything on the portal's side of the line exists and is tested: provisioning, import, release
+with the four-eyes rule, the embed endpoint, the identity composition and its limits, the audit
+entry, and the player with its renewal. `PowerBi:Mode=Fake` simulates the service so all of it
+runs with no capacity and nothing billing.
+
+**Be clear about what that does not prove.** Gate 1 is about the half that lives *inside* Power
+BI — that a token naming one report is refused for another, and that the model's row-level
+security actually filters to the codes in the identity. No fake can stand in for either. The
+simulated player therefore shows the token's scope in writing rather than drawing a report, so
+that nobody mistakes a green screen for a passed gate.
+
+#### What is most likely to be wrong the first time it runs
+
+Written against published API shapes with no capacity to check them against. In rough order of
+how likely each is to bite:
+
+| | Why it might be wrong | Cost if it is |
+| --- | --- | --- |
+| `POST /profiles` to create a profile | The only call whose request shape could not be confirmed from the reference | Minutes — the error names the field |
+| Service principal + arbitrary `username` | Microsoft's guidance in one place says a service principal must supply **its own object id** as the effective identity. If that applies to this shape, the codes cannot travel in the username at all | Config change to `IdentityMode=CustomData`, plus the template's filter moves to `CUSTOMDATA()` — already wired, see `EffectiveIdentityFactory` |
+| `xmlaPermissions: "Off"` alongside a report-scoped token | Sent to stop a viewer's token being usable to query the model directly; the combination is untested | Minutes |
+| 256-character `username` ceiling | **Open question A3.** Verified as the documented limit; what is unverified is whether ACP's widest client fits under it | Same fallback as above |
+| `embedUrl` from the import response | Taken from the import's report entry rather than fetched separately | Minutes |
+
+`capacityId` on `AssignToCapacity` **was** wrong — written as `capacityObjectId`, which is what
+the admin-scoped sibling call uses — and was corrected against the reference before commit. It
+is listed here as the reason this table exists.
+
+#### Two deviations
+
+**Release was pulled forward from Phase 5.** Gate 1 needs a client to open a *released* report,
+and a client sees nothing until somebody releases something. Shipping Phase 4 without it would
+have meant either no gate or a weaker rule in the interim, so the four-eyes rule arrives whole.
+What stayed in Phase 5 is the upload *pipeline*: private Blob staging, the queue, the background
+worker, and the XMLA template checks. Phase 4 streams the `.pbix` straight to Power BI and
+records `direct://` in `BlobPath` so no later migration mistakes those rows for staged ones.
+
+**The Power BI SDK is not used.** The .NET SDK is a generated client over an API surface of
+which this uses six calls, it brings its own authentication stack, and its profile support works
+by building a differently-configured client per profile — the opposite of what is needed here,
+where the profile changes per request. Six typed calls against `HttpClient` are smaller and the
+failures are legible. `powerbi-client-react` *is* used, in the browser, where it is the whole job.
 
 ### Phase 5 — Upload, checks, release · *me*
 

@@ -104,6 +104,15 @@ Skip this until you actually reach Phase 4. It bills from the moment it exists.
 - [ ] Add yourself as capacity administrator
 - [ ] **Pause it immediately after creating it**
 
+Then put its **object id** into `config/entra.local.json`:
+
+```json
+"PowerBi": { "Mode": "Live", "CapacityId": "<the capacity's object id>" }
+```
+
+Until you do, leave `PowerBi:Mode` alone. The portal simulates Power BI, which lets every other
+screen work — and proves nothing about report isolation. See the README.
+
 Or, once you have the ids from steps 1–2:
 
 ```bash

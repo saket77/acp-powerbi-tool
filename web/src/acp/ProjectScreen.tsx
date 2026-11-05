@@ -9,6 +9,8 @@ import {
 } from '../api'
 import { StateBoundary, type LoadState } from '../shared/LoadState'
 import { toHash } from '../shared/useHashRoute'
+import { PreviewPanel } from './PreviewPanel'
+import { VersionsPanel } from './VersionsPanel'
 
 const AcpRoles: ProjectRole[] = ['Lead', 'Member', 'Viewer']
 
@@ -70,6 +72,10 @@ export function ProjectScreen({ projectKey }: { projectKey: string }) {
                 : 'Nothing released yet — uploading arrives in Phase 5.'}
             </p>
           </section>
+
+          <VersionsPanel projectKey={projectKey} onReleased={() => void load()} />
+
+          <PreviewPanel projectKey={projectKey} grants={view.grants} />
 
           <AddGrant
             projectKey={projectKey}

@@ -110,3 +110,30 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .ok { color: var(--good); }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82rem;
         word-break: break-all; }
+
+/* Phase 4: the report, and what stands in for it while Power BI is simulated. */
+.report-frame, .report-frame iframe {
+  width: 100%;
+  min-height: 32rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.simulated {
+  border: 1px dashed var(--warn-line);
+  background: var(--warn-bg);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.scope {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 1.25rem;
+  margin: 0;
+  font-size: 0.9rem;
+}
+.scope dt { color: var(--muted); }
+.scope dd { margin: 0; }
+
+input[type='file'] { font: inherit; font-size: 0.9rem; }

@@ -50,8 +50,9 @@ attacks alone; together they cover a bug in any one of them.
 | Automation | **13 of 22** lifecycle steps run by themselves |
 | Steps for the platform owner per project | **0** — support only |
 
-**Status of the code:** Phases 1–3 built. See [Running it locally](#running-it-locally) — it
-runs today with no Azure account and no Microsoft tenant.
+**Status of the code:** Phases 1–4 built; Gate 1 not yet passed. See
+[Running it locally](#running-it-locally) — it runs today with no Azure account, no Microsoft
+tenant and no Fabric capacity.
 
 ## Docs
 
@@ -75,9 +76,9 @@ open docs/source/wireframe.html
 
 ## Running it locally
 
-Currently at **Phase 3** — clients, projects and grants, with row-level security in SQL behind
-them. People sign in, consultants create clients and projects and decide who may see each one,
-and clients see their own Databooks and nothing else. Power BI arrives in Phase 4.
+Currently at **Phase 4** — Power BI. Consultants provision a client, upload a Databook, release
+it (somebody else has to), preview it as any of their clients, and clients open their own. Power
+BI itself is simulated unless you give it a capacity.
 
 ```bash
 scripts/dev-up.sh                 # colima + SQL Server + Azurite, waits until SQL is ready
@@ -89,7 +90,7 @@ npm --prefix web run dev                    # http://localhost:5173
 Then open <http://localhost:5173> and pick somebody from the account picker.
 
 ```bash
-dotnet build && dotnet test       # 66 tests; 13 need SQL and skip without it
+dotnet build && dotnet test       # 92 tests; 28 need SQL and skip without it
 scripts/dev-down.sh               # --clean also drops the data volumes
 ```
 
@@ -137,6 +138,24 @@ returns only their own row.
 dotnet test --filter IsolationTests
 ```
 
+### Power BI without Power BI
+
+`PowerBi:Mode` is `Fake` in development, which simulates provisioning, imports and tokens so the
+whole portal runs with no Fabric capacity and nothing billing. Like the development sign-in, it
+refuses to start outside the Development environment.
+
+**What that proves and what it does not.** Everything on the portal's side of the line runs
+exactly as in production: the grant lookup, the company codes read from the database, the
+identity composition and its limits, the audit entry, the 404s. What it cannot touch is the half
+inside Power BI — that a token naming one report is refused for another, and that the model's
+row-level security really filters to the codes in the identity. That is **Gate 1**, it needs an
+F2 capacity, and no fake stands in for it.
+
+So the simulated player does not draw a grey rectangle saying "preview unavailable". It prints
+the token's scope — report, model, workspace, role, identity, companies, expiry — because that
+is the part being exercised, and a screen that looked like a working report would be the most
+expensive kind of wrong.
+
 ### How the database decides what you can see
 
 Every connection is stamped with who is asking, and SQL Server filters `Projects` and
@@ -181,6 +200,17 @@ Containers run on **colima**, not Docker Desktop. `scripts/dev-up.sh` starts it 
 which SQL Server needs because there is no ARM build of it. The script also works around a
 stale `"credsStore": "desktop"` left in `~/.docker/config.json` by a previous Docker Desktop
 install — deleting that one line makes the workaround unnecessary.
+
+## Known rough edges
+
+- **The browser bundle is 428 kB** (102 kB gzipped), most of it `powerbi-client`. It is loaded
+  on every screen including the ones with no report on them. A dynamic import in `ReportView`
+  would fix that; Phase 6 rebuilds this UI anyway.
+- **Phase 4 uploads stream straight to Power BI.** Phase 5 replaces that with private Blob
+  staging, a queue and the XMLA template checks. Rows created the Phase 4 way record
+  `direct://` in `BlobPath` so they are easy to tell apart.
+- **Nothing in the Power BI client has ever run against Power BI.** The shapes most likely to be
+  wrong are listed in [docs/implementation-plan.md](docs/implementation-plan.md) under Phase 4.
 
 ## Hard constraints
 

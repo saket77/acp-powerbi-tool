@@ -22,6 +22,18 @@
     "InviteRedirectUrl": "http://localhost:5173/"
   },
 
+  "PowerBi": {
+    // "Fake" simulates Power BI entirely — no capacity, nothing billing, and nothing proved
+    // about report isolation. "Live" is the real service and needs the capacity below.
+    "Mode": "Live",
+
+    // The Fabric capacity's object id, from tenant-setup.md step 6. A workspace that is not on
+    // a capacity cannot be embedded at all, so this is required in Live mode.
+    //
+    // It bills by the second while running. Pause it with `scripts/capacity.sh pause`.
+    "CapacityId": "00000000-0000-0000-0000-000000000000"
+  },
+
   "Entra": {
     // Tenant id again — Microsoft.Identity.Web reads it from here.
     "TenantId": "00000000-0000-0000-0000-000000000000",

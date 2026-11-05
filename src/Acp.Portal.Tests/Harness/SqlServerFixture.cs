@@ -12,15 +12,17 @@ namespace Acp.Portal.Tests.Harness;
 /// to the database somebody is clicking around in would be rude; keeping them apart also means
 /// a failure here is never explained away by leftover data.
 /// </remarks>
-public sealed class SqlServerFixture : IAsyncLifetime
+public sealed class SqlServerFixture(string databaseName = "AcpPortal_Tests") : IAsyncLifetime
 {
     private const string Server =
         "Server=localhost,1433;User Id=sa;Password=Acp_Local_Dev_2026!;"
         + "TrustServerCertificate=True;Encrypt=False;Connect Timeout=5";
 
-    private const string DatabaseName = "AcpPortal_Tests";
+    // Each suite that needs real SQL gets its own database, because they all drop and recreate
+    // theirs on the way in and xunit runs classes in parallel.
+    private string DatabaseName { get; } = databaseName;
 
-    public string ConnectionString { get; } = $"{Server};Database={DatabaseName}";
+    public string ConnectionString { get; } = $"{Server};Database={databaseName}";
 
     public static bool IsAvailable { get; } = SqlProbe.CanConnect($"{Server};Database=master");
 

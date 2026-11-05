@@ -40,6 +40,16 @@ export function ClientScreen({ slug }: { slug: string }) {
                 </span>
               ))}
             </div>
+
+            <div className="row" style={{ marginTop: '1rem' }}>
+              {client.provisioned ? (
+                <span className="ok">
+                  Has its own Power BI workspace and service principal profile.
+                </span>
+              ) : (
+                <Provision slug={slug} onDone={() => void load()} />
+              )}
+            </div>
           </section>
 
           <NewProject clientSlug={slug} onCreated={() => void load()} />
@@ -78,6 +88,40 @@ export function ClientScreen({ slug }: { slug: string }) {
         </>
       )}
     </StateBoundary>
+  )
+}
+
+/**
+ * Gives the client its own Power BI profile and workspace.
+ *
+ * Worth doing deliberately rather than automatically on creation: a profile belongs permanently
+ * to the identity that made it, so one created by accident is one nobody can clean up.
+ */
+function Provision({ slug, onDone }: { slug: string; onDone: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function provision() {
+    setBusy(true)
+    setError(null)
+    try {
+      await api.provisionClient(slug)
+      onDone()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not provision the client.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <button className="primary" disabled={busy} onClick={() => void provision()}>
+        {busy ? 'Provisioning…' : 'Create Power BI workspace'}
+      </button>
+      <span className="hint">One workspace and one service principal profile, for this client only.</span>
+      {error && <p className="error">{error}</p>}
+    </>
   )
 }
 

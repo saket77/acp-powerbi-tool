@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Acp.Portal.Api.Auth;
+using Acp.Portal.Infrastructure.PowerBi;
 using Acp.Portal.Infrastructure.Projects;
 
 namespace Acp.Portal.Api.Endpoints;
@@ -40,6 +41,21 @@ public static class ClientEndpoints
 
         group.MapGet("/", async (ClientDirectory clients, CancellationToken cancellationToken) =>
             Results.Ok(await clients.ListAsync(cancellationToken)));
+
+        group.MapPost("/{slug}/provision", async (
+            string slug,
+            ClaimsPrincipal principal,
+            ClientProvisioning provisioning,
+            ClientDirectory clients,
+            CancellationToken cancellationToken) =>
+        {
+            var client = await provisioning.ProvisionAsync(
+                slug, principal.PortalUserId()!.Value, cancellationToken);
+
+            return client is null
+                ? Results.NotFound()
+                : Results.Ok(await clients.GetAsync(slug, cancellationToken));
+        });
 
         group.MapGet("/{slug}", async (
             string slug,

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type ProjectListItem, type SignedIn } from '../api'
 import { StateBoundary, type LoadState } from '../shared/LoadState'
+import { toHash } from '../shared/useHashRoute'
 
 /**
  * What a client sees: their Databooks, and nothing that hints at anybody else's.
@@ -56,7 +57,13 @@ export function ClientHome({ session }: { session: SignedIn }) {
           <tbody>
             {projects.map((project) => (
               <tr key={project.key}>
-                <td>{project.name}</td>
+                <td>
+                  {project.hasReleasedVersion ? (
+                    <a href={toHash({ kind: 'project', key: project.key })}>{project.name}</a>
+                  ) : (
+                    project.name
+                  )}
+                </td>
                 <td>{project.clientName}</td>
                 <td>
                   {project.hasReleasedVersion ? (

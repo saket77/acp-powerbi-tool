@@ -1,5 +1,6 @@
 using Acp.Portal.Domain.Abstractions;
 using Acp.Portal.Infrastructure.Data;
+using Acp.Portal.Infrastructure.PowerBi;
 using Acp.Portal.Infrastructure.Projects;
 using Acp.Portal.Infrastructure.Identity;
 using Azure.Core;
@@ -97,7 +98,7 @@ public static class DependencyInjection
 
         if (auth.Mode == AuthMode.Entra)
         {
-            services.AddSingleton(_ => CreateCredential(configuration));
+            services.TryAddSingleton(_ => CreateCredential(configuration));
             services.AddHttpClient<IGuestInviter, GraphGuestInviter>(http =>
             {
                 http.BaseAddress = new Uri("https://graph.microsoft.com/v1.0/");
@@ -108,6 +109,58 @@ public static class DependencyInjection
         {
             services.AddScoped<IGuestInviter, DevelopmentGuestInviter>();
         }
+
+        return services;
+    }
+
+    /// <summary>
+    /// Everything to do with Power BI. Call it after <see cref="AddPortalInfrastructure"/>.
+    /// </summary>
+    /// <param name="isDevelopmentEnvironment">
+    /// Passed in rather than read from configuration, for the same reason as the development
+    /// sign-in: whether Power BI may be simulated must not be reachable from a config file.
+    /// </param>
+    public static IServiceCollection AddPortalPowerBi(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        bool isDevelopmentEnvironment)
+    {
+        services.AddOptions<PowerBiOptions>()
+            .Bind(configuration.GetSection(PowerBiOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        var powerBi = configuration.GetSection(PowerBiOptions.SectionName).Get<PowerBiOptions>() ?? new();
+
+        if (powerBi.Mode == PowerBiMode.Fake && !isDevelopmentEnvironment)
+        {
+            throw new InvalidOperationException(
+                "PowerBi:Mode is Fake but ASPNETCORE_ENVIRONMENT is not Development. A simulated "
+                + "Power BI issues tokens nothing honours, so a deployed environment running this "
+                + "way would show every client an empty report and report success. "
+                + "Set PowerBi:Mode to Live.");
+        }
+
+        if (powerBi.Mode == PowerBiMode.Live)
+        {
+            services.TryAddSingleton(_ => CreateCredential(configuration));
+
+            services.AddHttpClient<IPowerBiClient, PowerBiRestClient>(http =>
+            {
+                http.BaseAddress = new Uri(powerBi.ApiBaseUrl);
+                // Importing a .pbix is a large upload followed by a poll; the poll has its own
+                // deadline, so this only has to be generous enough for the upload itself.
+                http.Timeout = TimeSpan.FromMinutes(5);
+            });
+        }
+        else
+        {
+            services.AddScoped<IPowerBiClient, FakePowerBiClient>();
+        }
+
+        services.AddScoped<ClientProvisioning>();
+        services.AddScoped<ReportVersions>();
+        services.AddScoped<EmbedTokens>();
 
         return services;
     }

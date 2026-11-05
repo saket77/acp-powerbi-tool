@@ -2,8 +2,10 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Acp.Portal.Domain.Entities;
 using Acp.Portal.Infrastructure.Data;
+using Acp.Portal.Infrastructure.PowerBi;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Acp.Portal.Infrastructure.Projects;
 
@@ -19,6 +21,7 @@ namespace Acp.Portal.Infrastructure.Projects;
 public sealed partial class ClientDirectory(
     PortalDbContext db,
     TimeProvider clock,
+    IOptions<PowerBiOptions> powerBi,
     ILogger<ClientDirectory> logger)
 {
     public async Task<Client> CreateAsync(
@@ -50,6 +53,11 @@ public sealed partial class ClientDirectory(
             // has to name at least one. Refusing now beats a confusing failure two screens later.
             throw new PortalRuleException("Add at least one company. Grants are made of company codes.");
         }
+
+        // Checked here rather than when a token is minted. A code with a space in it would be
+        // accepted by every screen and then rejected by Power BI months later, in front of a
+        // client, on the one call that matters.
+        foreach (var (code, _) in codes) EffectiveIdentityFactory.ValidateCompanyCode(code, powerBi.Value);
 
         var duplicate = codes.GroupBy(c => c.Code, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault(g => g.Count() > 1);
@@ -109,6 +117,7 @@ public sealed partial class ClientDirectory(
             .Select(c => new ClientDetail(
                 c.Slug,
                 c.Name,
+                c.PowerBiProfileId != null && c.PowerBiWorkspaceId != null,
                 c.Companies
                     .OrderBy(x => x.Code)
                     .Select(x => new CompanyView(x.Id, x.Code, x.Name))
@@ -149,5 +158,6 @@ public sealed record ClientProject(string Key, string Name, string Status, DateO
 public sealed record ClientDetail(
     string Slug,
     string Name,
+    bool Provisioned,
     IReadOnlyList<CompanyView> Companies,
     IReadOnlyList<ClientProject> Projects);

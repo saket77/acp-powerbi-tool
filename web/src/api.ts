@@ -48,6 +48,27 @@ const post = <T,>(path: string, body: unknown) => send<T>('POST', path, body)
 const del = (path: string) => send<void>('DELETE', path)
 
 /**
+ * Multipart upload. No Content-Type header on purpose — the browser has to set it itself so it
+ * can include the multipart boundary, and naming it here would produce a request the server
+ * cannot parse.
+ */
+async function postFile<T>(path: string, file: File): Promise<T> {
+  const form = new FormData()
+  form.append('file', file)
+
+  const response = await fetch(path, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: json,
+    body: form,
+  })
+
+  if (!response.ok) throw new ApiError(response.status, await describe(response))
+
+  return (await response.json()) as T
+}
+
+/**
  * ASP.NET Core answers a rejected request with a problem document. Reading the sentence out of
  * it is the difference between "409" and "that address belongs to ACP staff" on the screen.
  */
@@ -167,6 +188,8 @@ export interface ClientProject {
 export interface ClientDetail {
   slug: string
   name: string
+  /** False until the client has its own Power BI profile and workspace. */
+  provisioned: boolean
   companies: CompanyView[]
   projects: ClientProject[]
 }
@@ -214,6 +237,48 @@ export interface NewGrantBody {
   companyIds?: string[]
 }
 
+export interface ReportVersionView {
+  version: number
+  state: 'Importing' | 'CheckFailed' | 'Draft' | 'Released' | 'Superseded'
+  uploadedAt: string
+  uploadedBy: string | null
+  releasedAt: string | null
+  releasedBy: string | null
+  releaseNote: string | null
+  checkFailureMessage: string | null
+}
+
+export interface EmbedScope {
+  workspaceId: string
+  datasetId: string
+  roles: string[]
+  username: string
+  customData: string | null
+  companies: string[]
+}
+
+export interface EmbedReady {
+  status: 'ready'
+  /** 'Fake' when Power BI is simulated — there is no capacity and nothing to render. */
+  provider: 'Fake' | 'Live'
+  embedUrl: string
+  reportId: string
+  token: string
+  /** Power BI's own answer. Renewal is scheduled from this, never from the lifetime requested. */
+  expiresAt: string
+  version: number
+  isDraft: boolean
+  /** Only ever populated for ACP staff. */
+  scope: EmbedScope | null
+}
+
+export interface EmbedUnavailable {
+  status: 'unavailable'
+  reason: string
+}
+
+export type EmbedResponse = EmbedReady | EmbedUnavailable
+
 export const api = {
   health: () => get<HealthReport>('/api/health'),
   version: () => get<VersionInfo>('/api/version'),
@@ -236,6 +301,28 @@ export const api = {
   acpProject: (key: string) => get<AcpProjectView>(`/api/acp/projects/${encodeURIComponent(key)}`),
   createProject: (body: { clientSlug: string; key?: string; name: string; endDate?: string }) =>
     post<ProjectDetail>('/api/acp/projects', body),
+
+  provisionClient: (slug: string) =>
+    post<ClientDetail>(`/api/acp/clients/${encodeURIComponent(slug)}/provision`, {}),
+
+  versions: (projectKey: string) =>
+    get<ReportVersionView[]>(`/api/acp/projects/${encodeURIComponent(projectKey)}/versions`),
+  uploadVersion: (projectKey: string, file: File) =>
+    postFile<ReportVersionView>(`/api/acp/projects/${encodeURIComponent(projectKey)}/versions`, file),
+  releaseVersion: (projectKey: string, version: number, note: string) =>
+    post<ReportVersionView>(
+      `/api/acp/projects/${encodeURIComponent(projectKey)}/versions/${version}/release`,
+      { note },
+    ),
+
+  embed: (projectKey: string, options?: { draft?: boolean; viewAs?: string }) => {
+    const query = new URLSearchParams()
+    if (options?.draft) query.set('draft', 'true')
+    if (options?.viewAs) query.set('viewAs', options.viewAs)
+
+    const suffix = query.size === 0 ? '' : `?${query}`
+    return get<EmbedResponse>(`/api/projects/${encodeURIComponent(projectKey)}/embed${suffix}`)
+  },
 
   setGrant: (projectKey: string, body: NewGrantBody) =>
     post<GrantView>(`/api/acp/projects/${encodeURIComponent(projectKey)}/grants`, body),
